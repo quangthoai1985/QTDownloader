@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import getpass
+import hashlib
 import json
 import logging
 import logging.handlers
@@ -19,7 +20,12 @@ from . import icons
 from .bridge import Bridge
 from .main_window import MainWindow
 
-SERVER_NAME = "TDownload-" + "".join(c for c in getpass.getuser() if c.isalnum())
+
+def server_name(data_dir: str) -> str:
+    """Mỗi thư mục dữ liệu là một "phiên bản" riêng → bản thử nghiệm (TDOWNLOAD_DATA) không đụng app đang dùng."""
+    user = "".join(c for c in getpass.getuser() if c.isalnum())
+    tag = hashlib.sha1(os.path.normcase(os.path.abspath(data_dir)).encode("utf-8")).hexdigest()[:8]
+    return f"TDownload-{user}-{tag}"
 
 
 def _setup_logging(data_dir) -> None:
@@ -33,9 +39,9 @@ def _setup_logging(data_dir) -> None:
     root.addHandler(h)
 
 
-def _send_to_running(urls: list[str]) -> bool:
+def _send_to_running(name: str, urls: list[str]) -> bool:
     sock = QLocalSocket()
-    sock.connectToServer(SERVER_NAME)
+    sock.connectToServer(name)
     if not sock.waitForConnected(400):
         return False
     sock.write(json.dumps({"urls": urls}).encode())
@@ -61,13 +67,13 @@ def main(argv: list[str] | None = None) -> int:
     app.setWindowIcon(icons.app_icon())
     app.setQuitOnLastWindowClosed(False)
 
-    if _send_to_running(urls):
+    data_dir = os.environ.get("TDOWNLOAD_DATA") or str(default_data_dir())
+    name = server_name(data_dir)
+    if _send_to_running(name, urls):
         return 0
     server = QLocalServer()
-    QLocalServer.removeServer(SERVER_NAME)
-    server.listen(SERVER_NAME)
-
-    data_dir = os.environ.get("TDOWNLOAD_DATA") or str(default_data_dir())
+    QLocalServer.removeServer(name)
+    server.listen(name)
     _setup_logging(data_dir)
     try:
         engine = Engine(data_dir)

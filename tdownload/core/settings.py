@@ -61,6 +61,9 @@ class Settings:
     capture_exts: str = DEFAULT_CAPTURE_EXTS
     ffmpeg_path: str = ""
     auto_checksum_sidecar: bool = True # tự tìm tệp .sha256 cạnh link để kiểm tra
+    check_updates: bool = True         # tự hỏi GitHub Releases mỗi ngày
+    update_skip_version: str = ""      # phiên bản người dùng chọn "Bỏ qua"
+    last_update_check: float = 0.0
     schedule: Schedule = field(default_factory=Schedule)
 
     @classmethod

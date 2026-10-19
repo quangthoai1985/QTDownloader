@@ -20,6 +20,7 @@ bằng Python + Qt.
 | Video | Tải HLS `.m3u8` (chọn chất lượng, tải song song đoạn, ghép `.ts`/`.mp4`; có ffmpeg thì remux MP4). Từ chối luồng có DRM |
 | An toàn | Kiểm checksum (tự tìm `.sha256`), Mark-of-the-Web, cảnh báo "server trả trang web", kiểm dung lượng ổ trước khi tải |
 | Trình duyệt | Extension Chrome/Edge/Cốc Cốc: tự chuyển tải xuống, menu chuột phải, tải tất cả/đã chọn liên kết, phát hiện video trên tab |
+| Cập nhật | Tự phát hiện bản mới trên GitHub Releases (1 lần/ngày hoặc Trợ giúp → Kiểm tra bản mới), tải gói mới kèm kiểm SHA-256 |
 | Giao diện | Tiếng Việt, cửa sổ tiến trình hiện từng kết nối + đồ thị tốc độ, khay hệ thống, theo dõi clipboard, kéo-thả link |
 
 ## Chạy
@@ -36,7 +37,9 @@ python -m tdownload
 
 Hoặc bấm đúp `run.bat`. Đóng cửa sổ thì app thu xuống khay; muốn tắt hẳn: chuột phải icon khay → **Thoát**.
 
-Bản đóng gói không cần Python: chạy `build.bat` → `dist\TDownload\TDownload.exe`.
+Bản đóng gói không cần Python: tải `TDownload-<phiên bản>-win64.zip` ở mục **Releases** của repo, giải nén, chạy
+`TDownload\TDownload.exe` (chưa ký số nên Windows SmartScreen có thể cảnh báo → *More info → Run anyway*).
+Tự build: `build.bat` → `dist\TDownload\TDownload.exe`.
 
 ### Dòng lệnh (không giao diện)
 
@@ -67,7 +70,7 @@ tdownload/core/     engine, không phụ thuộc giao diện
   fileio.py         ghi song song vào tệp sparse, Mark-of-the-Web
 tdownload/ui/       giao diện PySide6
 extension/          extension Manifest V3
-tests/              máy chủ thử nghiệm + 24 test (pytest)
+tests/              máy chủ thử nghiệm + 32 test (pytest)
 ```
 
 Dữ liệu (danh sách tải, cài đặt, log) nằm ở `%LOCALAPPDATA%\TDownload`. Đặt biến `TDOWNLOAD_DATA` để dùng thư mục khác.

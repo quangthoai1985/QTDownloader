@@ -8,6 +8,8 @@ Mỗi lần làm việc, Agent thêm mục mới **ở trên cùng** (ngày, vi�
 ### Việc còn dở / ưu tiên kế tiếp
 - Kiểm thử với máy chủ thật trên Internet (chưa làm lần nào).
 - Token ghép đôi cho API `127.0.0.1:41888`.
+- Repo đang **riêng tư** → app không đăng nhập không đọc được Release (API trả 404, app báo "chưa có bản phát
+  hành công khai"). Muốn tính năng báo bản mới hoạt động cho người dùng thì cần repo công khai.
 - Xem thêm [CLAUDE.md §7](CLAUDE.md#7-việc-cần-làm-tiếp-theo-thứ-tự-ưu-tiên).
 
 ## [1.0.0] — 2026-10-19
@@ -59,11 +61,24 @@ Phiên bản đầu tiên, làm trong một phiên với Claude Code.
 - Dò HLS/DASH/video trên tab, hiện trong popup kèm nút tải; huy hiệu số lượng.
 - Trang tuỳ chọn: cổng, đuôi tệp, kích thước tối thiểu, trang loại trừ.
 
+### Thêm — phiên bản & cập nhật
+- `tdownload/__init__.py` (`__version__`, `GITHUB_REPO`) là nguồn duy nhất của số phiên bản; test bắt lệch với
+  `extension/manifest.json` và CHANGELOG.
+- `TDownload.exe` có tài nguyên phiên bản Windows (Properties → Details) sinh từ `__version__`
+  (`tools/make_version_file.py`).
+- Phát hiện bản mới qua GitHub Releases (`core/updater.py`): tự kiểm tra 1 lần/ngày (chỉ khi có giao diện, sau
+  khởi động 20 giây), menu Trợ giúp → Kiểm tra bản mới…, hộp thoại hiện ghi chú phát hành, nút "Có bản x.y.z" trên
+  thanh trạng thái, thông báo khay; "Tải bản mới" tải gói `TDownload-x.y.z-win64.zip` bằng chính TDownload và kiểm
+  SHA-256 theo `SHA256SUMS.txt` của Release; "Bỏ qua bản này"; tuỳ chọn tắt. Địa chỉ API đổi được bằng biến
+  `TDOWNLOAD_UPDATE_URL`.
+- `tools/package_release.py` tạo `release/` gồm zip app, zip extension, `SHA256SUMS.txt`.
+
 ### Thêm — kiểm thử & đóng gói
 - `tests/server.py`: máy chủ mô phỏng giới hạn tốc độ/kết nối, rớt kết nối, không Range, không độ dài, Range ngắn,
   tệp thay đổi, chuyển hướng, HLS.
-- 24 test pytest (segments, đa kết nối nhanh hơn, resume sau khi tắt engine, rớt 35% kết nối, 503, giới hạn tốc độ,
-  mirror, checksum, HLS, hàng đợi, luật Origin của API, Mark-of-the-Web).
+- 32 test pytest (segments, đa kết nối nhanh hơn, resume sau khi tắt engine, rớt 35% kết nối, 503, giới hạn tốc độ,
+  mirror, checksum, HLS, hàng đợi, luật Origin của API, Mark-of-the-Web, đồng bộ phiên bản, kiểm tra cập nhật với
+  GitHub Releases giả lập).
 - `build.bat` (PyInstaller) → `dist\TDownload\TDownload.exe` ~90 MB; `tools/make_icons.py`.
 - Tài liệu: README, [docs/DE_XUAT_TINH_NANG.md](docs/DE_XUAT_TINH_NANG.md), CLAUDE.md.
 
@@ -85,3 +100,7 @@ Phiên bản đầu tiên, làm trong một phiên với Claude Code.
 - Nút chuẩn của Qt hiện tiếng Anh, `&` trong tên tab mất → `vi_buttons()`/`ask()`, `&&`.
 - Bản build 151 MB → loại numpy/PIL/opengl32sw → ~90 MB.
 - Test đọc snapshot trước khi kịp cập nhật → dùng `.get()`.
+- Test "server giới hạn 2 kết nối" dùng tệp 4 MB nên engine không bao giờ mở kết nối thứ 3 (ngưỡng chia 1 MB) →
+  test chỉ qua nhờ may về thời gian; đổi sang tệp 12 MB.
+- Chế độ "chỉ 1 phiên bản" dùng chung tên cho mọi thư mục dữ liệu → bản chạy thử với `TDOWNLOAD_DATA` đánh thức
+  app đang dùng; nay tên gắn với thư mục dữ liệu.

@@ -1,7 +1,9 @@
-# Build PyInstaller
+# Build PyInstaller / Release
 build/
 dist/
+release/
 *.spec
+assets/version_info.txt
 
 # Python
 __pycache__/

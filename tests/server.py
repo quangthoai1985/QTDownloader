@@ -30,6 +30,7 @@ _lock = threading.Lock()
 _active: dict[str, int] = {}
 STATS = {"requests": 0, "ranged": 0, "503": 0, "max_parallel": 0, "connections": set()}
 
+GH_ASSET_SIZE = 1_234_567
 HLS_SEGMENTS = 12
 HLS_SEG_SIZE = 150_000
 
@@ -65,6 +66,8 @@ class Handler(BaseHTTPRequestHandler):
         STATS["requests"] += 1
         STATS["connections"].add(self.client_address)
         p = u.path
+        if p.startswith("/gh/"):  # giả lập GitHub Releases API cho cơ chế kiểm tra cập nhật
+            return self.serve_github(p[4:])
         if p.startswith("/sized/"):  # /sized/<size>/<tên>[.sha256] — để thử tự tìm checksum
             _, _, size, name = p.split("/", 3)
             if name.endswith(".sha256"):
@@ -100,6 +103,29 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    def serve_github(self, rest: str):
+        """/gh/latest/<tag> · /gh/latest/404 · /gh/latest/ratelimit · /gh/asset/<tên>"""
+        import json
+        base = f"http://{self.headers.get('Host')}/gh/asset/"
+        kind, _, arg = rest.partition("/")
+        if kind == "asset":
+            if arg == "SHA256SUMS.txt":
+                body = "".join(f"{sha256_of(GH_ASSET_SIZE)}  TDownload-{v}-win64.zip\n" for v in ("9.9.9", "1.0.1"))
+                return self.simple(200, body.encode(), "text/plain")
+            return self.serve_file(arg, {"size": str(GH_ASSET_SIZE)}, False)
+        if arg == "404":
+            return self.simple(404, b'{"message":"Not Found"}', "application/json")
+        if arg == "ratelimit":
+            return self.simple(403, b'{"message":"API rate limit exceeded"}', "application/json")
+        ver = arg.lstrip("v")
+        name = f"TDownload-{ver}-win64.zip"
+        rel = {"tag_name": arg, "name": f"TDownload {ver}", "body": "## Có gì mới\n- Sửa lỗi", "draft": False,
+               "html_url": f"https://github.com/x/TDownload/releases/tag/{arg}", "prerelease": False,
+               "published_at": "2026-10-20T00:00:00Z",
+               "assets": [{"name": name, "size": GH_ASSET_SIZE, "browser_download_url": base + name},
+                          {"name": "SHA256SUMS.txt", "size": 100, "browser_download_url": base + "SHA256SUMS.txt"}]}
+        self.simple(200, json.dumps(rel).encode(), "application/json")
 
     def serve_hls(self, name: str):
         base = f"http://{self.headers.get('Host')}/hls/"

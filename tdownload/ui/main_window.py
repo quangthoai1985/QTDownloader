@@ -21,7 +21,7 @@ from ..core.util import filename_from_url, fmt_speed
 from . import icons
 from .bridge import Bridge, open_path, reveal_path
 from .dialogs import (AddUrlDialog, BatchDialog, CompleteDialog, CountdownDialog, PropertiesDialog,
-                      SchedulerDialog, SettingsDialog, ask)
+                      SchedulerDialog, SettingsDialog, UpdateDialog, ask)
 from .progress_dialog import ProgressDialog
 from .table_model import ID_ROLE, DownloadFilter, DownloadTableModel
 from .widgets import ProgressDelegate
@@ -154,6 +154,7 @@ class MainWindow(QMainWindow):
         m.addAction(self._act("speed", "Giới hạn tốc độ chung…", self.limit_global))
         m = mb.addMenu("Trợ &giúp")
         m.addAction(self._act("globe", "Cài extension trình duyệt…", lambda: self.show_settings(tab=2)))
+        m.addAction(self._act("restart", "Kiểm tra bản mới…", self.check_updates))
         m.addAction(self.a_about)
 
     def _build_central(self) -> None:
@@ -242,7 +243,15 @@ class MainWindow(QMainWindow):
         menu.addSeparator()
         menu.addAction("Tuỳ chỉnh…", self.limit_global)
         self.limit_btn.setMenu(menu)
-        for w in (self.lbl_speed, self.lbl_active, self.lbl_queue, self.lbl_api, self.limit_btn):
+        self.update_btn = QToolButton()
+        self.update_btn.setAutoRaise(True)
+        self.update_btn.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.update_btn.setIcon(icons.icon("all"))
+        self.update_btn.setStyleSheet("color: #16a34a; font-weight: 600;")
+        self.update_btn.clicked.connect(lambda: self.show_update(self.engine.snapshot.get("update")))
+        self.update_btn.hide()
+        self._update_dialog = None
+        for w in (self.update_btn, self.lbl_speed, self.lbl_active, self.lbl_queue, self.lbl_api, self.limit_btn):
             sb.addPermanentWidget(w)
 
     def _build_tray(self) -> None:
@@ -259,9 +268,16 @@ class MainWindow(QMainWindow):
         self.tray.setContextMenu(m)
         self.tray.activated.connect(lambda r: self.show_window() if r in (
             QSystemTrayIcon.ActivationReason.Trigger, QSystemTrayIcon.ActivationReason.DoubleClick) else None)
-        self.tray.messageClicked.connect(self.show_window)
+        self._pending_update_popup = False
+        self.tray.messageClicked.connect(self._on_tray_message)
         if QSystemTrayIcon.isSystemTrayAvailable():
             self.tray.show()
+
+    def _on_tray_message(self) -> None:
+        self.show_window()
+        if self._pending_update_popup:
+            self._pending_update_popup = False
+            self.show_update(self.engine.snapshot.get("update"))
 
     # ------------------------------------------------------------------ cập nhật định kỳ
     def refresh(self) -> None:
@@ -299,6 +315,11 @@ class MainWindow(QMainWindow):
         self.limit_btn.setToolTip("Giới hạn tốc độ chung: " + (f"{lim} KB/s" if lim else "không"))
         self.limit_btn.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon if lim
                                           else Qt.ToolButtonStyle.ToolButtonIconOnly)
+        upd = snap.get("update")
+        self.update_btn.setVisible(bool(upd))
+        if upd:
+            self.update_btn.setText(f"Có bản {upd['version']}")
+            self.update_btn.setToolTip("Bấm để xem phiên bản mới trên GitHub")
         self.tray.setToolTip(f"TDownload — {active} đang tải · {fmt_speed(speed) or '0 B/s'}")
         self.tray.setIcon(icons.tray_icon(active > 0))
         title = "TDownload — Trình tăng tốc tải xuống"
@@ -577,6 +598,40 @@ class MainWindow(QMainWindow):
             self._on_queue_finished(payload)
         elif kind == "message":
             self.statusBar().showMessage(str(payload), 8000)
+        elif kind == "update_available":
+            if payload.get("manual") or (self.isVisible() and not self.isMinimized()):
+                self.show_update(payload)
+            else:
+                self._pending_update_popup = True
+                self.tray.showMessage("Có phiên bản mới", f"TDownload {payload['version']} đã phát hành — bấm để xem",
+                                      icons.app_icon(), 8000)
+
+    # ------------------------------------------------------------------ cập nhật phiên bản
+    def check_updates(self) -> None:
+        def done(res, err):
+            if err is not None:
+                QMessageBox.warning(self, "Kiểm tra bản mới", str(err))
+            elif res["status"] == "latest":
+                from .. import __version__
+                QMessageBox.information(self, "Kiểm tra bản mới", f"Bạn đang dùng bản mới nhất ({__version__}).")
+            elif res["status"] == "error":
+                QMessageBox.warning(self, "Kiểm tra bản mới", "Không kiểm tra được: " + res["error"])
+            # "newer": sự kiện update_available đã mở hộp thoại
+        self.statusBar().showMessage("Đang hỏi GitHub…", 4000)
+        self.bridge.run(self.engine.check_update, True, on_done=done)
+
+    def show_update(self, info: dict | None) -> None:
+        if not info:
+            return
+        self.show_window()
+        if self._update_dialog is not None and self._update_dialog.isVisible():
+            self._update_dialog.raise_()
+            return
+        dlg = UpdateDialog(self.bridge, info, self)
+        dlg.downloaded.connect(lambda ident: self.show_progress(ident))
+        self._update_dialog = dlg
+        self._keep(dlg)
+        dlg.show()
 
     def _on_completed(self, d: dict) -> None:
         ident = d["id"]

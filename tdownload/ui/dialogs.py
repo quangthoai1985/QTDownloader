@@ -494,6 +494,9 @@ class SettingsDialog(QDialog):
         self.resume_start = QCheckBox("Mở app thì tự tải tiếp các tệp đang tải dở")
         self.resume_start.setChecked(s.resume_on_start)
         f.addRow("", self.resume_start)
+        self.check_updates = QCheckBox("Tự kiểm tra phiên bản mới trên GitHub mỗi ngày")
+        self.check_updates.setChecked(s.check_updates)
+        f.addRow("", self.check_updates)
         tabs.addTab(g, "Chung")
 
         c = QWidget()
@@ -586,6 +589,7 @@ class SettingsDialog(QDialog):
             use_category_dirs=self.use_cat.isChecked(), show_progress_dialog=self.show_prog.isChecked(),
             show_complete_dialog=self.show_done.isChecked(), monitor_clipboard=self.clip.isChecked(),
             minimize_to_tray=self.tray.isChecked(), resume_on_start=self.resume_start.isChecked(),
+            check_updates=self.check_updates.isChecked(),
             max_connections=self.max_conn.value(), max_concurrent=self.max_conc.value(),
             global_speed_limit_kb=self.glimit.value(), min_split_kb=self.min_split.value(),
             max_retries=self.retries.value(), timeout=self.timeout.value(), http2=self.http2.isChecked(),
@@ -789,6 +793,73 @@ class CompleteDialog(QDialog):
 
 
 # ============================================================================ Đếm ngược
+class UpdateDialog(QDialog):
+    """Báo có phiên bản mới trên GitHub Releases."""
+
+    downloaded = Signal(str)   # id mục tải gói cập nhật
+
+    def __init__(self, bridge: Bridge, info: dict, parent=None):
+        super().__init__(parent)
+        from PySide6.QtGui import QDesktopServices
+        from PySide6.QtCore import QUrl
+        from PySide6.QtWidgets import QTextBrowser
+        from .. import __version__
+        self.bridge = bridge
+        self.info = info
+        self.setWindowTitle("Có phiên bản mới")
+        self.setWindowIcon(icons.app_icon())
+        self.setMinimumSize(560, 420)
+        lay = QVBoxLayout(self)
+        head = QHBoxLayout()
+        logo = QLabel()
+        logo.setPixmap(icons.app_pixmap(48))
+        head.addWidget(logo)
+        title = QLabel(f"<b style='font-size:15px'>TDownload {info['version']} đã phát hành</b><br>"
+                       f"<span style='color:gray'>Bạn đang dùng {__version__}"
+                       f"{' · ' + info['published'][:10] if info.get('published') else ''}</span>")
+        head.addWidget(title, 1)
+        lay.addLayout(head)
+        notes = QTextBrowser()
+        notes.setOpenExternalLinks(True)
+        notes.setMarkdown(info.get("notes") or "_(Bản phát hành không có ghi chú)_")
+        lay.addWidget(notes, 1)
+        if info.get("asset_url"):
+            size = fmt_size(info.get("asset_size") or -1)
+            chk = " · có kiểm SHA-256" if info.get("sha256") else ""
+            lay.addWidget(_muted(f"Gói tải: {info['asset_name']} ({size}){chk}. Tải xong, đóng TDownload rồi giải nén "
+                                 "đè lên thư mục cũ (dữ liệu và danh sách tải được giữ nguyên)."))
+        btns = QHBoxLayout()
+        skip = QPushButton("Bỏ qua bản này")
+        later = QPushButton("Để sau")
+        page = QPushButton(icons.icon("globe"), "Xem trên GitHub")
+        get = QPushButton(icons.icon("all"), "Tải bản mới")
+        get.setDefault(True)
+        get.setVisible(bool(info.get("asset_url")))
+        page.setVisible(bool(info.get("page_url")))
+        btns.addWidget(skip)
+        btns.addStretch(1)
+        for b in (page, later, get):
+            btns.addWidget(b)
+        lay.addLayout(btns)
+        page.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(info["page_url"])))
+        later.clicked.connect(self.reject)
+        skip.clicked.connect(self._skip)
+        get.clicked.connect(self._download)
+
+    def _skip(self) -> None:
+        self.bridge.run(self.bridge.engine.skip_update, self.info["version"])
+        self.reject()
+
+    def _download(self) -> None:
+        def done(ident, err):
+            if err is not None:
+                QMessageBox.warning(self, "Không tải được bản mới", str(err))
+                return
+            self.downloaded.emit(ident)
+            self.accept()
+        self.bridge.run(self.bridge.engine.download_update, on_done=done)
+
+
 class CountdownDialog(QDialog):
     def __init__(self, action_label: str, seconds: int = 60, parent=None):
         super().__init__(parent)

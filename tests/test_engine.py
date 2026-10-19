@@ -92,9 +92,10 @@ def test_flaky_connections_are_retried(engine, srv):
 
 
 def test_connection_limit_server_reduces_connections(engine, srv):
-    size = 4 * MB
+    # đủ lớn để engine muốn mở > 2 kết nối (ngưỡng chia đoạn tối thiểu 1 MB)
+    size = 12 * MB
     test_server.STATS["503"] = 0
-    url = f"{srv}/file/limited.bin?size={size}&maxconn=2&rate=1500"
+    url = f"{srv}/file/limited.bin?size={size}&maxconn=2&rate=2500"
     s = wait_done(engine, add(engine, url, connections=8), 60)
     assert s["status"] == "completed", s["error"]
     assert sha(s["path"]) == test_server.sha256_of(size)

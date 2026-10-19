@@ -13,6 +13,7 @@ import datetime as dt
 import logging
 import os
 import threading
+import time
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -25,6 +26,7 @@ from .limiter import RateLimiter
 from .probe import DownloadError, probe
 from .settings import DEFAULT_UA, Settings, default_data_dir
 from .storage import Storage
+from .updater import DEFAULT_URL as UPDATE_URL, UpdateCheckError, fetch_latest, is_newer
 from .util import filename_from_url, host_of, now, sanitize_filename, unique_path
 
 log = logging.getLogger("tdownload.engine")
@@ -71,6 +73,10 @@ class Engine:
         self.start_api = start_api
         self.api = None
         self.api_error = ""
+        self.update_url = os.environ.get("TDOWNLOAD_UPDATE_URL") or UPDATE_URL
+        self.update_info: dict | None = None
+        self._update_task: asyncio.Task | None = None
+        self._boot_time = time.monotonic()
 
     # ================================================================ vòng đời
     def start(self) -> None:
@@ -397,6 +403,58 @@ class Engine:
         self.changed(queued[idx], persist=True)
         self.changed(queued[j], persist=True)
 
+    # ---------------------------------------------------------------- cập nhật phiên bản
+    async def check_update(self, manual: bool = False) -> dict:
+        """Hỏi GitHub Releases. Trả {status: newer|latest|error, info?, error?}.
+
+        Có bản mới → phát sự kiện `update_available` (trừ khi tự kiểm tra mà người dùng đã bỏ qua bản đó).
+        """
+        self.settings.last_update_check = time.time()
+        self.settings.save(self.settings_path)
+        try:
+            async with self.make_client(http2=False) as c:
+                info = await fetch_latest(c, self.update_url)
+        except UpdateCheckError as e:
+            log.info("Kiểm tra cập nhật: %s", e)
+            return {"status": "error", "error": str(e)}
+        if not is_newer(info.version):
+            return {"status": "latest", "info": info.to_dict()}
+        d = info.to_dict()
+        self.update_info = d
+        if manual or info.version != self.settings.update_skip_version:
+            self.emit("update_available", d | {"manual": manual})
+        return {"status": "newer", "info": d}
+
+    async def skip_update(self, version: str) -> None:
+        self.settings.update_skip_version = version
+        self.settings.save(self.settings_path)
+        if self.update_info and self.update_info.get("version") == version:
+            self.update_info = None
+
+    async def download_update(self) -> str:
+        """Tải gói bản mới bằng chính TDownload, kèm kiểm SHA-256 từ SHA256SUMS.txt của Release."""
+        info = self.update_info
+        if not info or not info.get("asset_url"):
+            raise DownloadError("Bản phát hành không có gói cài đặt cho Windows")
+        return await self.add(
+            info["asset_url"], filename=info["asset_name"],
+            save_dir=os.path.join(self.settings.download_dir, "TDownload-updates"),
+            checksum=("sha256:" + info["sha256"]) if info.get("sha256") else "",
+            description=f"Bản cập nhật TDownload {info['version']}", size=info.get("asset_size") or -1,
+        )
+
+    def _maybe_check_update(self) -> None:
+        """Tự kiểm tra 1 lần/ngày, chỉ khi có giao diện (CLI và test không gọi GitHub)."""
+        if not (self.ui_attached and self.settings.check_updates):
+            return
+        if self._update_task is not None and not self._update_task.done():
+            return
+        if time.monotonic() - self._boot_time < 20:   # để app khởi động xong đã
+            return
+        if time.time() - self.settings.last_update_check < 24 * 3600:
+            return
+        self._update_task = asyncio.get_running_loop().create_task(self.check_update(manual=False))
+
     async def handle_browser_add(self, payload: dict) -> None:
         """Gọi bởi API cục bộ khi extension chuyển link sang."""
         if self.ui_attached and (self.settings.browser_ask or payload.get("batch")):
@@ -493,6 +551,7 @@ class Engine:
                 self._build_snapshot()
                 self._process_queue()
                 self._check_schedule()
+                self._maybe_check_update()
             except Exception:
                 log.exception("Lỗi trong vòng tick")
             await asyncio.sleep(TICK)
@@ -516,6 +575,7 @@ class Engine:
             "speed": total_speed,
             "active": len(self._atasks),
             "api_error": self.api_error,
+            "update": self.update_info,
         }
 
 

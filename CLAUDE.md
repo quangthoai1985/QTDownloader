@@ -10,7 +10,7 @@
 bắt link từ trình duyệt qua extension. Viết bằng **Python 3.14 + PySide6 + httpx**. Thiết kế engine:
 [docs/THIET_KE.md](docs/THIET_KE.md).
 
-Trạng thái: **v1.0.0 chạy được** — 24/24 test qua, extension đã thử trên Edge 155 thật, bản PyInstaller
+Trạng thái: **v1.0.0 đã phát hành** (GitHub Release `v1.0.0`) — 32/32 test qua, extension đã thử trên Edge 155 thật, bản PyInstaller
 `dist\TDownload\TDownload.exe` (~90 MB) đã thử tải end-to-end. **Chưa thử với máy chủ thật trên Internet**
 (Google Drive, Fshare, Mediafire, CDN lớn) — đây là việc ưu tiên số 1.
 
@@ -29,10 +29,20 @@ Trạng thái: **v1.0.0 chạy được** — 24/24 test qua, extension đã th�
 python -m pip install -r requirements.txt
 python -m tdownload                 # GUI (hoặc run.bat); --minimized để khởi động xuống khay
 python -m tdownload.cli URL -c 16   # headless
-python -m pytest -q tests           # ~55 giây, 24 test
+python -m pytest -q tests           # ~60 giây, 32 test
 python tests/server.py --port 8765  # máy chủ thử nghiệm để bấm thử trên GUI
-build.bat                           # → dist\TDownload\TDownload.exe
+build.bat [thư_mục]                 # → <thư_mục mặc định dist>\TDownload\TDownload.exe
+python tools/package_release.py [--dist thư_mục]   # → release\*.zip + SHA256SUMS.txt
 ```
+
+### Quy trình phát hành phiên bản mới
+1. Tăng `__version__` trong `tdownload/__init__.py` **và** `"version"` trong `extension/manifest.json`; thêm mục
+   `## [x.y.z] — ngày` vào CHANGELOG (test `tests/test_version.py` chặn nếu lệch).
+2. `python -m pytest -q tests` → `build.bat` → chạy thử exe với `TDOWNLOAD_DATA` tạm → `python tools/package_release.py`.
+3. Commit, `git tag -a vX.Y.Z`, push tag, `gh release create vX.Y.Z release/* --notes-file …`.
+   Tên tệp phải giữ dạng `TDownload-<ver>-win64.zip` + `SHA256SUMS.txt` — `core/updater.py` dựa vào đó để tìm gói
+   và kiểm SHA-256. Tag phải dạng `vX.Y.Z` (không dùng pre-release cho bản chính: API `releases/latest` bỏ qua
+   pre-release).
 
 - Dữ liệu: `%LOCALAPPDATA%\TDownload\` (`tdownload.db` SQLite WAL, `settings.json`, `logs\tdownload.log`).
   Biến `TDOWNLOAD_DATA` đổi thư mục dữ liệu — **luôn dùng thư mục tạm khi thử nghiệm** để không đụng dữ liệu thật.
@@ -61,6 +71,7 @@ UI (PySide6, luồng chính) ──engine.call()──► core/engine.py (luồn
 | `core/engine.py` | Điều phối | Mọi API là coroutine, gọi qua `engine.call(fn, …)` (trả `concurrent.futures.Future`). `snapshot` là dict thay mới mỗi 0,4 s (cache theo `_dirty`). `ui_attached=True` → link từ trình duyệt thành sự kiện `browser_add` để UI hiện hộp thoại |
 | `core/hls.py` | HLS | Master → chọn biến thể; segment tải song song vào `<tệp>.tdhls/`; ghép; có ffmpeg thì remux `.ts→.mp4`. fMP4 (`#EXT-X-MAP`) → `.mp4` |
 | `core/fileio.py` | Ghi tệp | `FSCTL_SET_SPARSE` + `truncate(size)`; ghi bằng lock+seek+write; `mark_of_the_web()` ghi ADS `Zone.Identifier` |
+| `core/updater.py` | Báo bản mới | `GET api.github.com/repos/<GITHUB_REPO>/releases/latest`; so `tag_name` với `__version__`; engine `check_update(manual)`, `skip_update`, `download_update`; tự kiểm 1 lần/ngày **chỉ khi `ui_attached`**. Repo riêng tư → 404 → báo lỗi êm |
 | `core/api_server.py` | HTTP tối giản | `/api/ping`, `/api/add`, `/api/add-batch`. POST bắt buộc `application/json` (ép preflight CORS) |
 | `ui/main_window.py` | Cửa sổ chính | Toolbar, cây phân loại, bảng (`table_model.py`), khay, clipboard, kéo-thả, nhập `.ef2` |
 | `ui/progress_dialog.py` | Cửa sổ tiến trình | `SegmentBar` tô màu theo worker sở hữu đoạn; xử lý "tải xong" nằm ở `MainWindow._on_completed` |
@@ -106,6 +117,10 @@ Tệp đang tải tên `<tên>.tdpart` cạnh tệp đích; xong thì `os.replac
 | `import()` trong service worker bị cấm | Chuẩn HTML cấm dynamic import trong SW | Gọi tính năng qua `chrome.runtime.sendMessage` từ trang popup |
 | `--load-extension` | Chrome bản thương hiệu ≥137 bỏ cờ này; Edge 155 vẫn nhận | Test tự động dùng Edge + hồ sơ tạm `--user-data-dir` |
 | Test thỉnh thoảng `KeyError` | Snapshot cập nhật mỗi 0,4 s | Test đọc `.get(id, {})` |
+| Test giới hạn 503 thỉnh thoảng trượt | Tệp 4 MB < 2 × ngưỡng chia → không mở kết nối thứ 3 | Tệp thử 12 MB |
+| `build.bat` lỗi `PermissionError … qwindows.dll` | `dist\TDownload\TDownload.exe` đang chạy (người dùng mở) giữ tệp | Không tắt app của người dùng; build ra thư mục khác: `build.bat build\release-dist` |
+| Bản thử nghiệm "đánh thức" app đang dùng | Tên QLocalServer chung cho mọi thư mục dữ liệu | Tên gắn hash thư mục dữ liệu (`ui/app.py: server_name`). Khi thử exe vẫn phải đổi `api_port` trong `settings.json` tạm vì app thật giữ cổng 41888 |
+| Báo bản mới không chạy với repo riêng tư | API GitHub không đăng nhập trả 404 cho repo private | Chấp nhận; cần repo công khai (không nhúng token vào app) |
 
 Giới hạn **cố hữu** (chấp nhận, không phải bug):
 - Không bắt được link từ ứng dụng ngoài trình duyệt (cần driver mạng ký số — không làm).
@@ -116,13 +131,15 @@ Giới hạn **cố hữu** (chấp nhận, không phải bug):
 
 1. **Kiểm thử thực tế**: tải từ ≥ 20 host thật (Google Drive, Fshare, Mediafire, GitHub Releases, CDN VN, link có
    chữ ký hết hạn). Ghi tỉ lệ thành công, so tốc độ với IDM; sửa lỗi phát sinh.
-2. **Bảo mật API cục bộ**: hiện mọi tiến trình trên máy đều POST được `/api/add`. Thêm token ghép đôi
+2. **Công khai repo** (nếu người dùng đồng ý) để tính năng báo bản mới hoạt động; hoặc chuyển sang kênh cập nhật
+   khác (trang tĩnh/manifest ký Ed25519).
+3. **Bảo mật API cục bộ**: hiện mọi tiến trình trên máy đều POST được `/api/add`. Thêm token ghép đôi
    (`X-TDownload-Token`) giữa app và extension.
-3. Quét Windows Defender sau khi tải; tự giải nén; phát hiện trùng lặp; bản portable.
-4. Tự làm mới link hết hạn qua extension; chế độ nhường mạng (đo RTT); hồ sơ tốc độ theo giờ.
-5. DASH (`.mpd`) + ghép audio/video bằng ffmpeg; tích hợp yt-dlp (tuỳ chọn).
-6. Bộ cài Inno Setup + ký Authenticode; cập nhật tự động; extension cho Firefox.
-7. Nợ kỹ thuật nhỏ: `RateLimiter` hơi giới hạn quá tay khi nhiều worker; icon không đổi màu khi đổi sáng/tối lúc
+4. Quét Windows Defender sau khi tải; tự giải nén; phát hiện trùng lặp; bản portable.
+5. Tự làm mới link hết hạn qua extension; chế độ nhường mạng (đo RTT); hồ sơ tốc độ theo giờ.
+6. DASH (`.mpd`) + ghép audio/video bằng ffmpeg; tích hợp yt-dlp (tuỳ chọn).
+7. Bộ cài Inno Setup + ký Authenticode; tự cài bản mới (hiện chỉ tải zip, người dùng tự giải nén); extension cho Firefox.
+8. Nợ kỹ thuật nhỏ: `RateLimiter` hơi giới hạn quá tay khi nhiều worker; icon không đổi màu khi đổi sáng/tối lúc
    đang chạy; chưa có SOCKS proxy (thiếu `socksio`), FTP, NTLM; chưa đo hiệu năng bảng với hàng nghìn mục.
 
 Danh sách đầy đủ kèm cách làm: [docs/DE_XUAT_TINH_NANG.md](docs/DE_XUAT_TINH_NANG.md).
