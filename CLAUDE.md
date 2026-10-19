@@ -29,7 +29,7 @@ Trạng thái: **v1.0.0 đã phát hành** (GitHub Release `v1.0.0`) — 32/32 t
 python -m pip install -r requirements.txt
 python -m tdownload                 # GUI (hoặc run.bat); --minimized để khởi động xuống khay
 python -m tdownload.cli URL -c 16   # headless
-python -m pytest -q tests           # ~60 giây, 32 test
+python -m pytest -q tests           # ~65 giây, 40 test (có chạy node tests/ext_harness.mjs nếu có Node)
 python tests/server.py --port 8765  # máy chủ thử nghiệm để bấm thử trên GUI
 build.bat [thư_mục]                 # → <thư_mục mặc định dist>\TDownload\TDownload.exe
 python tools/package_release.py [--dist thư_mục]   # → release\*.zip + SHA256SUMS.txt
@@ -72,11 +72,12 @@ UI (PySide6, luồng chính) ──engine.call()──► core/engine.py (luồn
 | `core/hls.py` | HLS | Master → chọn biến thể; segment tải song song vào `<tệp>.tdhls/`; ghép; có ffmpeg thì remux `.ts→.mp4`. fMP4 (`#EXT-X-MAP`) → `.mp4` |
 | `core/fileio.py` | Ghi tệp | `FSCTL_SET_SPARSE` + `truncate(size)`; ghi bằng lock+seek+write; `mark_of_the_web()` ghi ADS `Zone.Identifier` |
 | `core/updater.py` | Báo bản mới | `GET api.github.com/repos/<GITHUB_REPO>/releases/latest`; so `tag_name` với `__version__`; engine `check_update(manual)`, `skip_update`, `download_update`; tự kiểm 1 lần/ngày **chỉ khi `ui_attached`**. Repo riêng tư → 404 → báo lỗi êm |
-| `core/api_server.py` | HTTP tối giản | `/api/ping`, `/api/add`, `/api/add-batch`. POST bắt buộc `application/json` (ép preflight CORS) |
+| `core/api_server.py` | HTTP tối giản | `/api/ping` (kèm `protocol` = đã bật `tdownload://` chưa), `/api/add`, `/api/add-batch`. POST bắt buộc `application/json` (ép preflight CORS) |
+| `core/integration.py` | Tích hợp Windows | Phân tích `tdownload://open[?minimized=1]` / `tdownload://add?url=…`; đăng ký giao thức (HKCU\Software\Classes) và khởi động cùng Windows (HKCU\…\Run) **chỉ khi người dùng bật tuỳ chọn**; mọi hàm nhận `root`/đường dẫn khoá để test trên khoá tạm. `sync()` lúc mở app ghi lại lệnh nếu app đã chuyển chỗ |
 | `ui/main_window.py` | Cửa sổ chính | Toolbar, cây phân loại, bảng (`table_model.py`), khay, clipboard, kéo-thả, nhập `.ef2` |
 | `ui/progress_dialog.py` | Cửa sổ tiến trình | `SegmentBar` tô màu theo worker sở hữu đoạn; xử lý "tải xong" nằm ở `MainWindow._on_completed` |
 | `ui/dialogs.py` | Hộp thoại | `vi_buttons()`/`ask()` thay chữ nút chuẩn của Qt bằng tiếng Việt |
-| `extension/` | MV3 (Chrome/Edge/Cốc Cốc) | `downloads.onCreated` → ping app → cancel+erase → POST. Cookie lấy **theo từng link** (`chrome.cookies.getAll({url})`). `webRequest.onHeadersReceived` dò HLS/video → `storage.session` theo tab |
+| `extension/` | MV3 (Chrome/Edge/Cốc Cốc) | `downloads.onCreated` → ping app → cancel+erase → POST. Cookie lấy **theo từng link** (`chrome.cookies.getAll({url})`). `webRequest.onHeadersReceived` dò HLS/video → `storage.session` theo tab. App tắt: bắt tự động thì để trình duyệt tải; menu/popup gọi `ensureApp` → mở `tdownload://` ở **tab tạm** (không điều hướng tab người dùng), chờ ping 10 s (15 s nếu app từng báo `protocol:true`; `protocol:false` thì bỏ qua) → không được thì `downloads.download` + `warn()` (huy hiệu, tiêu đề, `notifications`) |
 
 Trạng thái mục tải: `queued → connecting → downloading → (merging|verifying) → completed | error | paused`.
 Tệp đang tải tên `<tên>.tdpart` cạnh tệp đích; xong thì `os.replace`.
@@ -122,6 +123,13 @@ Tệp đang tải tên `<tên>.tdpart` cạnh tệp đích; xong thì `os.replac
 | Bản thử nghiệm "đánh thức" app đang dùng | Tên QLocalServer chung cho mọi thư mục dữ liệu | Tên gắn hash thư mục dữ liệu (`ui/app.py: server_name`). Khi thử exe vẫn phải đổi `api_port` trong `settings.json` tạm vì app thật giữ cổng 41888 |
 | Báo bản mới không chạy với repo riêng tư | API GitHub không đăng nhập trả 404 cho repo private | Repo đã chuyển công khai (2026-10-19); không bao giờ nhúng token vào app. Đã kiểm với GitHub thật: không đăng nhập đọc được `v1.0.0`, SHA-256 khớp |
 
+| Extension không mở được app khi app tắt | HTTP localhost không khởi chạy được tiến trình; native messaging cần registry | Giao thức `tdownload://` do người dùng tự bật trong Tuỳ chọn (HKCU, gỡ được). Giao thức **chưa đăng ký** thì Chrome/Edge im lặng (tab `about:blank`, không hộp thoại) → extension nhớ `protocol` từ `/api/ping` để khỏi chờ vô ích |
+| Lệnh `pythonw -m tdownload` trong registry không chạy | Trình duyệt gọi lệnh với thư mục làm việc bất kỳ → không thấy gói `tdownload` | Chạy từ mã nguồn thì lệnh là `pythonw "<repo>\run_tdownload.py"` (đường dẫn tuyệt đối) |
+| App từ mã nguồn mất 3–4 giây mới mở API | Nhập PySide6 + khởi động engine | Extension chờ ping ≥ 10 giây sau khi mở `tdownload://` |
+| Test không được ghi registry thật | Quy tắc dự án | Hàm `integration.*` nhận `root`/đường dẫn khoá; test dùng `HKCU\Software\TDownloadTest\<uuid>` rồi xoá cả cây. Khi thử tay **không** bật 2 tuỳ chọn trên máy người dùng |
+| Heredoc qua Bash tool làm mất một nửa dấu `\` | Công cụ xử lý chuỗi trước khi tới shell | Sửa tệp có `\` (regex JS, đường dẫn Windows, `\n` trong f-string) bằng công cụ Edit, không chèn qua heredoc |
+| Thử Edge làm rơi tệp `Unconfirmed *.crdownload` vào `Downloads` thật | Hồ sơ tạm vẫn lưu vào thư mục tải mặc định; Edge giữ tải qua http chờ xác nhận | Sau khi thử: `chrome.downloads.cancel` + `erase` từ trang extension (Edge tự xoá tệp tạm) |
+
 Giới hạn **cố hữu** (chấp nhận, không phải bug):
 - Không bắt được link từ ứng dụng ngoài trình duyệt (cần driver mạng ký số — không làm).
 - Extension chỉ thấy tải xuống sau khi trình duyệt đã bắt đầu; tải từ form POST và `blob:` không chuyển được.
@@ -133,6 +141,9 @@ Giới hạn **cố hữu** (chấp nhận, không phải bug):
    chữ ký hết hạn). Ghi tỉ lệ thành công, so tốc độ với IDM; sửa lỗi phát sinh.
 2. **Bảo mật API cục bộ**: hiện mọi tiến trình trên máy đều POST được `/api/add`. Thêm token ghép đôi
    (`X-TDownload-Token`) giữa app và extension.
+   - Thử giao thức `tdownload://` **đã đăng ký thật** (cần người dùng cho phép bật tuỳ chọn): hộp thoại "Mở
+     TDownload?" của Chrome/Edge/Cốc Cốc, có ô "Luôn cho phép" không (mở từ `tabs.create` là điều hướng do trình
+     duyệt khởi tạo, có thể không có ô này), 15 giây chờ có đủ không.
 3. Quét Windows Defender sau khi tải; tự giải nén; phát hiện trùng lặp; bản portable.
 4. Tự làm mới link hết hạn qua extension; chế độ nhường mạng (đo RTT); hồ sơ tốc độ theo giờ.
 5. DASH (`.mpd`) + ghép audio/video bằng ffmpeg; tích hợp yt-dlp (tuỳ chọn).

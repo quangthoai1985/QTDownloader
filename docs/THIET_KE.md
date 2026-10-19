@@ -77,6 +77,7 @@ thì `os.replace` sang tên thật và gắn Mark-of-the-Web (`Zone.Identifier`)
 |---|---|
 | Extension MV3 (Chrome/Edge/Cốc Cốc) | `downloads.onCreated` → ping app → huỷ tải của trình duyệt → gửi URL + cookie (theo từng link) + referer + UA |
 | Cầu nối extension ↔ app | **HTTP `127.0.0.1:41888`** — không cần ghi registry. Kiểm Host (chống DNS rebinding), Origin chỉ nhận trang extension, POST bắt buộc `application/json` (ép preflight CORS) |
+| App chưa chạy | Bắt tự động → để trình duyệt tải. Menu/popup → mở `tdownload://` (người dùng tự bật trong Tuỳ chọn) ở tab tạm của extension, chờ API rồi gửi; không được thì trình duyệt tải |
 | Phát hiện video | `webRequest.onHeadersReceived` dò `.m3u8`/video theo tab |
 
 Ngoài ra: theo dõi clipboard, kéo-thả link, nhập danh sách `.txt`/`.ef2`.

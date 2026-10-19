@@ -1,12 +1,24 @@
 // Service worker: bắt tải xuống, menu chuột phải, phát hiện media trên tab.
-import { cookiesFor, extOf, getCfg, hostExcluded, nameFromUrl, ping, post } from "./common.js";
+import {
+  cookiesFor, extOf, getCfg, hostExcluded, nameFromUrl, ping, post, protocolState, waitForApp,
+} from "./common.js";
 
 const FILE_MIMES = /^(application\/(octet-stream|zip|x-zip|x-rar|vnd\.rar|x-7z|x-msdownload|x-msi|x-iso9660|gzip|x-gzip|x-tar|x-bzip2|x-xz|pdf|vnd\.android|vnd\.ms-|vnd\.openxmlformats|java-archive|x-apple-diskimage|x-debian|x-rpm)|video\/|audio\/)/i;
 
 // ------------------------------------------------------------------ bắt tải xuống của trình duyệt
+// Link extension cố ý giao lại cho trình duyệt (app không nhận) — không bắt lại, tránh vòng lặp gửi/tải.
+const toBrowser = new Set();
+
+function browserDownload(url) {
+  toBrowser.add(url);
+  setTimeout(() => toBrowser.delete(url), 60000);
+  return chrome.downloads.download({ url });
+}
+
 chrome.downloads.onCreated.addListener(async (item) => {
   const cfg = await getCfg();
   if (!cfg.enabled) return;
+  if (toBrowser.delete(item.url) || toBrowser.delete(item.finalUrl)) return;
   const url = item.finalUrl || item.url;
   if (!/^https?:/i.test(url)) return;               // blob:/data:/file: không chuyển được
   if (item.state && item.state !== "in_progress") return;
@@ -40,7 +52,7 @@ chrome.downloads.onCreated.addListener(async (item) => {
     flashBadge("✓");
   } catch (e) {
     // gửi thất bại → mở lại tải bằng trình duyệt để người dùng không mất link
-    chrome.downloads.download({ url });
+    browserDownload(url);
   }
 });
 
@@ -55,18 +67,91 @@ chrome.runtime.onInstalled.addListener(() => {
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   const cfg = await getCfg();
-  if (!(await ping(cfg))) return notifyAppMissing();
+  const tabId = tab && tab.id >= 0 ? tab.id : undefined;
   if (info.menuItemId === "td-link") {
     const url = info.linkUrl || info.srcUrl;
     if (!url || !/^https?:/i.test(url)) return;
-    await post(cfg, "/api/add", {
+    await sendLink(cfg, tabId, {
       url, referer: info.pageUrl || "", cookies: await cookiesFor(url), userAgent: navigator.userAgent,
       pageUrl: info.pageUrl || "",
     });
-  } else if (tab && tab.id !== undefined) {
+  } else if (tabId !== undefined) {
+    const why = await ensureApp(cfg, tabId);
+    if (why) return warn("Chưa gửi được sang TDownload", why);
     await sendPageLinks(cfg, tab, info.menuItemId === "td-selection");
   }
 });
+
+// ------------------------------------------------------------------ app chưa chạy
+const HINT_ENABLE = "Bật Tuỳ chọn → Trình duyệt → “Cho phép trình duyệt mở TDownload” trong app để extension tự mở " +
+                    "app, hoặc bật “Khởi động cùng Windows”.";
+
+// Bảo đảm app đang chạy; nếu chưa thì mở qua tdownload:// rồi chờ API lên.
+// Trả về "" khi app sẵn sàng, ngược lại là lý do (tiếng Việt) để báo người dùng.
+// manual = người dùng bấm "Mở TDownload": luôn thử và hiện cửa sổ chính.
+async function ensureApp(cfg, tabId, manual = false) {
+  if (await ping(cfg)) return "";
+  const known = await protocolState();
+  if (!manual && !cfg.launchApp) return "TDownload chưa chạy (đã tắt “Tự mở TDownload” trong tuỳ chọn extension).";
+  if (!manual && known === false) return "TDownload chưa chạy. " + HINT_ENABLE;
+  setWaiting(true);
+  let tmp;
+  try {
+    // Mở ở tab tạm thay vì điều hướng tab hiện tại: không đụng tới trang người dùng đang xem.
+    // Giao thức đã đăng ký → trình duyệt hỏi "Mở TDownload?"; chưa đăng ký → không có gì xảy ra.
+    tmp = await chrome.tabs.create({
+      url: manual ? "tdownload://open" : "tdownload://open?minimized=1",
+      active: true, ...(tabId !== undefined ? { openerTabId: tabId } : {}),
+    });
+    // app khởi động mất 3–4 giây, người dùng còn phải bấm "Mở" trong hộp thoại; biết chắc giao thức đã
+    // đăng ký thì chờ lâu hơn. Chưa biết (app chưa từng báo) mà không mở được thì tab tạm đứng 10 giây.
+    if (await waitForApp(cfg, known || manual ? 15000 : 10000)) return "";
+    return known ? "Không mở được TDownload (đã chờ 15 giây). Hãy mở app rồi thử lại."
+                 : "TDownload chưa chạy và không mở được. " + HINT_ENABLE;
+  } catch (e) {
+    return "Không mở được TDownload: " + e;
+  } finally {
+    if (tmp) await closeTempTab(tmp.id);
+    setWaiting(false);
+  }
+}
+
+async function closeTempTab(id) {
+  try {
+    const t = await chrome.tabs.get(id);
+    const u = t.pendingUrl || t.url || "";   // tdownload:// không lộ URL (ngoài host_permissions) → ""
+    if (!u || u.startsWith("tdownload:") || u === "about:blank") await chrome.tabs.remove(id);
+  } catch {
+    // người dùng đã tự đóng tab
+  }
+}
+
+// Gửi 1 link sang app (mở app nếu cần). Không được thì để trình duyệt tải — không làm mất link.
+// Trả về "sent" | "browser" | "failed".
+async function sendLink(cfg, tabId, body, browserFallback = true) {
+  let why = await ensureApp(cfg, tabId);
+  if (!why) {
+    try {
+      await post(cfg, "/api/add", body);
+      flashBadge("✓");
+      return "sent";
+    } catch (e) {
+      why = "TDownload không nhận link: " + e.message;
+    }
+  }
+  if (!browserFallback) {
+    warn("Chưa gửi được sang TDownload", why);
+    return "failed";
+  }
+  try {
+    await browserDownload(body.url);
+  } catch (e) {
+    warn("Không tải được", why + "\nTrình duyệt cũng không tải được: " + e.message);
+    return "failed";
+  }
+  warn("Đã chuyển cho trình duyệt tải", why);
+  return "browser";
+}
 
 export async function sendPageLinks(cfg, tab, selectionOnly) {
   const [res] = await chrome.scripting.executeScript({
@@ -146,27 +231,57 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
   (async () => {
     const cfg = await getCfg();
     if (msg.type === "sendMedia") {
-      await post(cfg, "/api/add", {
+      // luồng HLS/DASH trình duyệt không tự tải được → không có đường lui
+      const status = await sendLink(cfg, msg.tabId, {
         url: msg.url, referer: msg.pageUrl, pageUrl: msg.pageUrl, cookies: await cookiesFor(msg.url),
         userAgent: navigator.userAgent, filename: msg.filename || "", kind: msg.kind === "HLS" ? "hls" : "http",
-      });
-      reply({ ok: true });
+      }, !["HLS", "DASH"].includes(msg.kind));
+      reply({ ok: status !== "failed", status });
     } else if (msg.type === "sendAll") {
+      const why = await ensureApp(cfg, msg.tab.id);
+      if (why) {
+        warn("Chưa gửi được sang TDownload", why);
+        return reply({ ok: false, error: why });
+      }
       await sendPageLinks(cfg, msg.tab, false);
       reply({ ok: true });
+    } else if (msg.type === "openApp") {
+      const why = await ensureApp(cfg, msg.tabId, true);
+      if (why) warn("Chưa mở được TDownload", why);
+      reply({ ok: !why, error: why });
     }
   })().catch((e) => reply({ ok: false, error: String(e) }));
   return true;
 });
 
-function flashBadge(text) {
-  chrome.action.setBadgeBackgroundColor({ color: "#16a34a" });
+// ------------------------------------------------------------------ báo cho người dùng
+const TITLE = "TDownload";
+let badgeTimer;
+
+function badge(text, color, ms) {
+  clearTimeout(badgeTimer);
+  chrome.action.setBadgeBackgroundColor({ color });
   chrome.action.setBadgeText({ text });
-  setTimeout(() => chrome.action.setBadgeText({ text: "" }), 2500);
+  if (ms) badgeTimer = setTimeout(() => {
+    chrome.action.setBadgeText({ text: "" });
+    chrome.action.setTitle({ title: TITLE });
+  }, ms);
 }
 
-function notifyAppMissing() {
-  chrome.action.setBadgeBackgroundColor({ color: "#dc2626" });
-  chrome.action.setBadgeText({ text: "!" });
-  setTimeout(() => chrome.action.setBadgeText({ text: "" }), 4000);
+function flashBadge(text) {
+  badge(text, "#16a34a", 2500);
+}
+
+function setWaiting(on) {
+  chrome.action.setTitle({ title: on ? "TDownload — đang mở ứng dụng…" : TITLE });
+  if (on) badge("…", "#6b7280");
+  else chrome.action.setBadgeText({ text: "" });
+}
+
+// Huy hiệu "!" + tiêu đề nút (luôn có) + thông báo hệ thống (rõ hơn, người dùng thấy ngay).
+function warn(title, message) {
+  badge("!", "#dc2626", 15000);
+  chrome.action.setTitle({ title: `TDownload — ${title}\n${message}` });
+  chrome.notifications.create({ type: "basic", iconUrl: "icons/128.png", title, message, priority: 1 },
+    () => void chrome.runtime.lastError);
 }

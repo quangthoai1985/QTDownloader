@@ -1,4 +1,4 @@
-import { fmtSize, getCfg, nameFromUrl, ping } from "./common.js";
+import { fmtSize, getCfg, nameFromUrl, ping, protocolState } from "./common.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -11,6 +11,24 @@ async function main() {
   const info = await ping(cfg);
   $("status").textContent = info ? `đã kết nối · ${info.active} đang tải` : "chưa mở app";
   $("status").className = "status " + (info ? "ok" : "bad");
+  // app chưa chạy: vẫn bấm "Tải" được — extension thử mở app, không được thì trình duyệt tải (link thường)
+  const known = info ? true : await protocolState();
+  const canLaunch = !!info || (cfg.launchApp && known !== false);
+  if (!info) {
+    $("launch").hidden = false;
+    $("launchHint").textContent = known
+      ? "Trình duyệt sẽ hỏi “Mở TDownload?” — chọn Mở."
+      : "Cần bật một lần trong app: Tuỳ chọn → Trình duyệt → “Cho phép trình duyệt mở TDownload”.";
+    $("open").onclick = async () => {
+      $("open").disabled = true;
+      $("open").textContent = "Đang mở…";
+      const r = await chrome.runtime.sendMessage({ type: "openApp", tabId: tab.id });
+      if (r && r.ok) return location.reload();
+      $("open").disabled = false;
+      $("open").textContent = "Mở TDownload";
+      $("launchHint").textContent = (r && r.error) || "Không mở được TDownload.";
+    };
+  }
 
   $("enabled").checked = cfg.enabled;
   $("enabled").onchange = (e) => chrome.storage.sync.set({ enabled: e.target.checked });
@@ -47,22 +65,24 @@ async function main() {
     if (m.kind === "DASH") {
       btn.disabled = true;
       btn.title = "DASH (.mpd) chưa hỗ trợ ghép";
+    } else if (m.kind === "HLS" && !canLaunch) {
+      btn.disabled = true;          // trình duyệt không tự tải được HLS
+      btn.title = "Hãy mở TDownload trước";
     }
-    btn.disabled = btn.disabled || !info;
     btn.onclick = async () => {
       btn.disabled = true;
       const title = (tab.title || "video").replace(/[\\/:*?"<>|]+/g, " ").trim().slice(0, 80);
       const r = await chrome.runtime.sendMessage({
-        type: "sendMedia", url: m.url, kind: m.kind, pageUrl: tab.url,
+        type: "sendMedia", url: m.url, kind: m.kind, pageUrl: tab.url, tabId: tab.id,
         filename: m.kind === "HLS" ? `${title}.ts` : "",
       });
-      btn.textContent = r && r.ok ? "Đã gửi ✓" : "Lỗi";
+      btn.textContent = !r || !r.ok ? "Lỗi" : r.status === "browser" ? "Trình duyệt tải" : "Đã gửi ✓";
     };
     li.append(kind, name, size, btn);
     ul.append(li);
   }
 
-  $("all").disabled = !info || !/^https?:/.test(tab.url || "");
+  $("all").disabled = !canLaunch || !/^https?:/.test(tab.url || "");
   $("all").onclick = async () => {
     $("all").disabled = true;
     const r = await chrome.runtime.sendMessage({ type: "sendAll", tab: { id: tab.id, url: tab.url } });

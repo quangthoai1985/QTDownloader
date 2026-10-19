@@ -91,8 +91,10 @@ class LocalApiServer:
             return await self._send(w, 204, None, cors)
         if method == "GET" and path == "/api/ping":
             snap = self.engine.snapshot
+            # protocol: extension nhớ để biết có nên thử mở app qua tdownload:// khi app tắt hay không
             return await self._send(w, 200, {"app": "TDownload", "version": __version__,
-                                             "active": snap.get("active", 0)}, cors)
+                                             "active": snap.get("active", 0),
+                                             "protocol": bool(self.engine.settings.browser_protocol)}, cors)
         if method != "POST":
             return await self._send(w, 404, {"error": "not found"}, cors)
         if not h.get("content-type", "").lower().startswith("application/json"):

@@ -9,6 +9,38 @@ Mỗi lần làm việc, Agent thêm mục mới **ở trên cùng** (ngày, vi�
 - Kiểm thử với máy chủ thật trên Internet (chưa làm lần nào).
 - Token ghép đôi cho API `127.0.0.1:41888`.
 - Thêm tệp LICENSE (người dùng chọn loại giấy phép) và thông báo giấy phép thư viện trong gói phát hành.
+- Thử giao thức `tdownload://` **đã đăng ký thật** trên Chrome/Edge/Cốc Cốc (cần người dùng bật tuỳ chọn): hộp
+  thoại "Mở TDownload?" trông thế nào, có ô "Luôn cho phép" không, chờ 15 giây có đủ không. Lần này chỉ thử trường
+  hợp chưa đăng ký (theo yêu cầu không ghi registry thật).
+
+### Thêm
+- 2026-10-19: **extension dùng được khi app chưa chạy.**
+  - Menu chuột phải "Tải bằng TDownload" (và nút "Tải" video trên popup): app tắt → mở `tdownload://open?minimized=1`
+    ở một tab tạm, chờ API lên (10 giây; 15 giây nếu app từng báo đã bật giao thức) rồi gửi link; không được thì
+    `chrome.downloads.download` cho trình duyệt tải, kèm huy hiệu "!", tiêu đề nút và thông báo hệ thống nêu lý do.
+    Luồng HLS và "tải tất cả liên kết" không có đường lui → chỉ báo lỗi.
+  - `/api/ping` trả thêm `protocol`; extension nhớ vào `storage.local` → app báo chưa bật giao thức thì rơi về trình
+    duyệt ngay, không chờ.
+  - Popup khi app tắt: nút **Mở TDownload** + một dòng hướng dẫn bật tuỳ chọn. Tuỳ chọn extension mới "Tự mở
+    TDownload khi app chưa chạy" (mặc định bật). Thêm quyền `notifications`.
+  - App: tuỳ chọn **Cho phép trình duyệt mở TDownload** (Tuỳ chọn → Trình duyệt) đăng ký
+    `HKCU\Software\Classes\tdownload`, bỏ chọn thì gỡ; **Khởi động cùng Windows (thu nhỏ xuống khay)**
+    (Tuỳ chọn → Chung) ghi `HKCU\...\CurrentVersion\Run` với `--minimized`. Cả hai mặc định tắt; khi mở app, tuỳ
+    chọn đang bật mà đường dẫn app đã đổi thì ghi lại. Chạy từ mã nguồn: lệnh là `pythonw "<repo>\run_tdownload.py"`
+    (đường dẫn tuyệt đối vì trình duyệt chạy lệnh ở thư mục bất kỳ).
+  - `ui/app.py` nhận `tdownload://open[?minimized=1]` và `tdownload://add?url=…&referer=…&filename=…` (chỉ nhận
+    http/https, luôn hiện hộp thoại xác nhận); chuyển sang phiên bản đang chạy kèm cờ có hiện cửa sổ hay không.
+  - Test: `tests/test_integration.py` (phân tích URL, đăng ký/gỡ trên khoá tạm `HKCU\Software\TDownloadTest`) và
+    `tests/ext_harness.mjs` (chạy `background.js` thật với API `chrome` giả: 5 kịch bản). 40/40 test qua.
+
+### Sửa
+- 2026-10-19: extension có thể lặp vô hạn "gửi app → lỗi → trình duyệt tải → bắt lại → gửi app…" khi app trả lời
+  ping nhưng `/api/add` lỗi. Link cố ý giao lại cho trình duyệt giờ được ghi nhớ để `downloads.onCreated` bỏ qua.
+  - Đã thử trên Edge 155 hồ sơ tạm, app tắt, giao thức chưa đăng ký: tab tạm `about:blank` đứng suốt thời gian
+    chờ (lúc thử là 6 giây, sau đó nâng lên 10; Edge không hiện hộp thoại nào), đóng lại, trình duyệt nhận tải, có thông báo; popup hiện nút "Mở TDownload"; bấm nút
+    rồi tự chạy app với `tdownload://open` → extension nhận ra app sau ~6 giây. Thử `tdownload://add?url=…` lần 2 →
+    chuyển sang phiên bản đang chạy, hộp thoại hiện đúng tên tệp tiếng Việt. Bấm menu chuột phải thật thì không tự
+    động hoá được qua CDP — thân hàm xử lý menu đã chạy qua harness Node.
 
 ### Thay đổi
 - 2026-10-19: repo chuyển sang **công khai** để tính năng báo bản mới hoạt động; đã kiểm với GitHub thật (không

@@ -7,6 +7,7 @@ $("port").value = cfg.port;
 $("exts").value = cfg.exts;
 $("minSize").value = cfg.minSizeKB;
 $("exclude").value = cfg.excludeHosts;
+$("launchApp").checked = cfg.launchApp;
 
 $("save").onclick = async () => {
   const port = parseInt($("port").value, 10);
@@ -15,6 +16,7 @@ $("save").onclick = async () => {
     exts: $("exts").value.trim() || DEFAULTS.exts,
     minSizeKB: Math.max(0, parseInt($("minSize").value, 10) || 0),
     excludeHosts: $("exclude").value.trim(),
+    launchApp: $("launchApp").checked,
   });
   $("msg").textContent = "Đã lưu ✓";
   setTimeout(() => ($("msg").textContent = ""), 2000);

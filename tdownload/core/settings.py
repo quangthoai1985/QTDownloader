@@ -58,6 +58,8 @@ class Settings:
     minimize_to_tray: bool = True
     api_port: int = 41888
     browser_ask: bool = True           # hiện hộp thoại khi trình duyệt chuyển link sang
+    browser_protocol: bool = False     # đăng ký tdownload:// để extension mở được app (ghi HKCU\Software\Classes)
+    autostart: bool = False            # khởi động cùng Windows, xuống khay (ghi HKCU\...\Run)
     capture_exts: str = DEFAULT_CAPTURE_EXTS
     ffmpeg_path: str = ""
     auto_checksum_sidecar: bool = True # tự tìm tệp .sha256 cạnh link để kiểm tra

@@ -22,7 +22,7 @@ Ký hiệu công sức: 🟢 nhỏ (≤ 3 ngày) · 🟡 vừa (1–2 tuần) ·
 | 9 | **Cảnh báo "trang web thay vì tệp"** | Phát hiện máy chủ trả `text/html` (trang đăng nhập/link hết hạn) trước khi tải | `AddUrlDialog._on_probe` |
 | 10 | **Kiểm tra dung lượng ổ trước khi tải** | Báo ngay nếu ổ không đủ chỗ, không tải nửa chừng | `http_task._prepare_file` |
 | 11 | **Nhập danh sách `.ef2` của IDM** | Chuyển hàng loạt link từ IDM sang trong 1 bước | `main_window.parse_ef2` |
-| 12 | **Không cần ghi registry để tích hợp trình duyệt** | Extension gọi API `127.0.0.1` có kiểm Host/Origin/CORS; IDM cần native messaging host + registry | `core/api_server.py` |
+| 12 | **Không cần ghi registry để tích hợp trình duyệt** | Extension gọi API `127.0.0.1` có kiểm Host/Origin/CORS; IDM cần native messaging host + registry. Muốn extension mở được app khi app tắt thì người dùng tự bật giao thức `tdownload://` (HKCU, gỡ được); không mở được thì link rơi về trình duyệt, không mất | `core/api_server.py`, `core/integration.py` |
 | 13 | **Từ chối DRM rõ ràng** | Luồng HLS có `#EXT-X-KEY` bị từ chối kèm thông báo, không âm thầm tải rác | `core/hls.py` |
 | 14 | **CLI headless** | `python -m tdownload.cli URL -c 16` — dùng trong script, máy chủ, CI | `tdownload/cli.py` |
 

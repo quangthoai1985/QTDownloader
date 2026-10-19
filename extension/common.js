@@ -6,6 +6,7 @@ export const DEFAULTS = {
   exts: "3gp 7z aac apk avi bin bz2 deb dmg exe flac flv gz iso jar m4a m4v mkv mov mp3 mp4 mpeg mpg msi msix " +
         "ogg pdf pkg ppt pptx rar rpm tar tgz wav webm wma wmv xapk xz zip zst docx xlsx",
   excludeHosts: "",
+  launchApp: true,     // app chưa chạy mà bấm "Tải bằng TDownload" → thử mở app qua tdownload://
 };
 
 export async function getCfg() {
@@ -19,12 +20,30 @@ export async function ping(cfg, timeout = 800) {
   const t = setTimeout(() => ctl.abort(), timeout);
   try {
     const r = await fetch(apiBase(cfg) + "/api/ping", { signal: ctl.signal, cache: "no-store" });
-    return r.ok ? await r.json() : null;
+    const info = r.ok ? await r.json() : null;
+    // nhớ app có bật "Cho phép trình duyệt mở TDownload" không — dùng khi app đã tắt
+    if (info && typeof info.protocol === "boolean") await chrome.storage.local.set({ protocol: info.protocol });
+    return info;
   } catch {
     return null;
   } finally {
     clearTimeout(t);
   }
+}
+
+export async function waitForApp(cfg, ms) {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    const info = await ping(cfg, 700);
+    if (info) return info;
+    await new Promise((r) => setTimeout(r, 400));
+  }
+  return null;
+}
+
+// true/false: app lần gần nhất báo đã bật/tắt giao thức tdownload://; null: chưa biết
+export async function protocolState() {
+  return (await chrome.storage.local.get({ protocol: null })).protocol;
 }
 
 export async function post(cfg, path, body) {

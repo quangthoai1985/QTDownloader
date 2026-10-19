@@ -58,6 +58,12 @@ Tham số: `-c` số kết nối, `-l` giới hạn KB/s, `--mirror URL` nguồn
 Khi TDownload không chạy, trình duyệt tự tải như bình thường. Tắt tạm hoặc bỏ qua một trang ngay trong popup
 của extension.
 
+Muốn extension mở được app khi app chưa chạy (menu chuột phải **Tải bằng TDownload**, nút **Mở TDownload** trên
+popup): trong app vào **Tuỳ chọn → Trình duyệt → Cho phép trình duyệt mở TDownload** (đăng ký giao thức
+`tdownload://` vào `HKCU\Software\Classes`, bỏ chọn thì gỡ). Trình duyệt sẽ hỏi "Mở TDownload?" — chọn Mở. Không
+mở được thì link được chuyển cho trình duyệt tải, kèm thông báo lý do. Hoặc bật **Tuỳ chọn → Chung → Khởi động
+cùng Windows** để app luôn chạy sẵn dưới khay. Cả hai mặc định tắt.
+
 ## Cấu trúc
 
 ```

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from dataclasses import asdict
 
 from PySide6.QtCore import Qt, QTimer, Signal
@@ -13,7 +14,7 @@ from PySide6.QtWidgets import (
     QPushButton, QSpinBox, QTabWidget, QTimeEdit, QToolButton, QVBoxLayout, QWidget,
 )
 
-from ..core import categories
+from ..core import categories, integration
 from ..core.util import expand_batch_pattern, filename_from_url, fmt_size, sanitize_filename
 from . import icons
 from .bridge import Bridge, open_path, reveal_path
@@ -497,6 +498,10 @@ class SettingsDialog(QDialog):
         self.check_updates = QCheckBox("Tự kiểm tra phiên bản mới trên GitHub mỗi ngày")
         self.check_updates.setChecked(s.check_updates)
         f.addRow("", self.check_updates)
+        self.autostart = QCheckBox("Khởi động cùng Windows (thu nhỏ xuống khay)")
+        self.autostart.setChecked(s.autostart)
+        self.autostart.setEnabled(sys.platform == "win32")
+        f.addRow("", self.autostart)
         tabs.addTab(g, "Chung")
 
         c = QWidget()
@@ -551,6 +556,18 @@ class SettingsDialog(QDialog):
         self.ask = QCheckBox("Hiện hộp thoại xác nhận khi trình duyệt chuyển link sang")
         self.ask.setChecked(s.browser_ask)
         f.addRow("", self.ask)
+        self.protocol = QCheckBox("Cho phép trình duyệt mở TDownload (giao thức tdownload://)")
+        self.protocol.setChecked(s.browser_protocol)
+        self.protocol.setEnabled(sys.platform == "win32")
+        pbox = QVBoxLayout()
+        pbox.setSpacing(2)
+        pbox.addWidget(self.protocol)
+        phint = _muted("Khi app chưa chạy, bấm “Tải bằng TDownload” hoặc nút “Mở TDownload” trên extension sẽ "
+                       "mở app (trình duyệt hỏi “Mở TDownload?” — chọn Mở). Ghi vào "
+                       "<code>HKCU\\Software\\Classes\\tdownload</code>; bỏ chọn thì gỡ.")
+        phint.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        pbox.addWidget(phint)
+        f.addRow("", pbox)
         self.exts = QPlainTextEdit(s.capture_exts)
         self.exts.setFixedHeight(90)
         f.addRow("Đuôi tệp tự bắt:", self.exts)
@@ -582,8 +599,27 @@ class SettingsDialog(QDialog):
         bb.rejected.connect(self.reject)
         lay.addWidget(bb)
 
+    def _apply_integration(self) -> tuple[bool, bool]:
+        """Ghi/gỡ registry theo ô đã chọn; lỗi thì giữ nguyên trạng thái cũ."""
+        s = self.bridge.settings
+        proto, auto = self.protocol.isChecked(), self.autostart.isChecked()
+        if proto != s.browser_protocol:
+            try:
+                integration.register_protocol() if proto else integration.unregister_protocol()
+            except OSError as e:
+                proto = s.browser_protocol
+                QMessageBox.warning(self, "Lỗi", f"Không ghi được registry cho giao thức tdownload://:\n{e}")
+        if auto != s.autostart:
+            try:
+                integration.set_autostart(auto)
+            except OSError as e:
+                auto = s.autostart
+                QMessageBox.warning(self, "Lỗi", f"Không đặt được khởi động cùng Windows:\n{e}")
+        return proto, auto
+
     def save(self) -> None:
         port_changed = self.port.value() != self.bridge.settings.api_port
+        proto, auto = self._apply_integration()
         values = dict(
             download_dir=self.dl_dir.text().strip() or self.bridge.settings.download_dir,
             use_category_dirs=self.use_cat.isChecked(), show_progress_dialog=self.show_prog.isChecked(),
@@ -596,7 +632,7 @@ class SettingsDialog(QDialog):
             proxy=self.proxy.text().strip(), user_agent=self.ua.text().strip(), verify_tls=self.verify.isChecked(),
             api_port=self.port.value(), browser_ask=self.ask.isChecked(),
             capture_exts=" ".join(self.exts.toPlainText().split()), ffmpeg_path=self.ffmpeg.text().strip(),
-            auto_checksum_sidecar=self.sidecar.isChecked(),
+            auto_checksum_sidecar=self.sidecar.isChecked(), browser_protocol=proto, autostart=auto,
         )
         self.bridge.run(self.bridge.engine.update_settings, values)
         if port_changed:

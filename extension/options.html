@@ -10,6 +10,7 @@
     input[type=number], textarea { width: 100%; font: inherit; padding: 6px 8px; border-radius: 6px;
       border: 1px solid var(--line); background: var(--card); color: var(--fg); }
     textarea { min-height: 80px; }
+    label.check { display: flex; align-items: center; gap: 8px; margin-top: 18px; }
     small { color: var(--muted); }
     .bar { margin-top: 18px; display: flex; gap: 10px; align-items: center; }
   </style>
@@ -29,6 +30,10 @@
 
   <label for="exclude">Không bắt link trên các trang</label>
   <textarea id="exclude" placeholder="vd: mail.google.com drive.google.com"></textarea>
+
+  <label class="check"><input type="checkbox" id="launchApp"> Tự mở TDownload khi app chưa chạy</label>
+  <small>Áp dụng cho menu chuột phải “Tải bằng TDownload” và nút trên popup. Cần bật Tuỳ chọn → Trình duyệt →
+    “Cho phép trình duyệt mở TDownload” trong app. Không mở được thì link thường được chuyển cho trình duyệt tải.</small>
 
   <div class="bar"><button class="primary" id="save">Lưu</button><span id="msg"></span></div>
   <script type="module" src="options.js"></script>

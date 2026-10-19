@@ -30,5 +30,9 @@ button:hover { border-color: var(--accent); }
 button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
 button:disabled { opacity: .5; cursor: default; }
 .actions { display: flex; align-items: center; justify-content: space-between; }
+.launch { display: flex; align-items: center; gap: 10px; background: var(--card); }
+.launch[hidden] { display: none; }
+.launch button { flex: none; }
+.hint { margin: 0; color: var(--muted); font-size: 12px; }
 a { color: var(--accent); }
 .note { margin: 0; padding: 8px 14px 12px; color: var(--muted); font-size: 11px; }
