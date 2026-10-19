@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <title>Tuỳ chọn TDownload</title>
+  <link rel="stylesheet" href="popup.css">
+  <style>
+    body { width: auto; max-width: 640px; margin: 24px auto; padding: 0 16px; }
+    label { display: block; margin: 14px 0 4px; font-weight: 600; }
+    input[type=number], textarea { width: 100%; font: inherit; padding: 6px 8px; border-radius: 6px;
+      border: 1px solid var(--line); background: var(--card); color: var(--fg); }
+    textarea { min-height: 80px; }
+    small { color: var(--muted); }
+    .bar { margin-top: 18px; display: flex; gap: 10px; align-items: center; }
+  </style>
+</head>
+<body>
+  <h1>Tuỳ chọn TDownload</h1>
+  <label for="port">Cổng của ứng dụng TDownload</label>
+  <input type="number" id="port" min="1024" max="65535">
+  <small>Phải trùng với Tuỳ chọn → Trình duyệt trong app (mặc định 41888).</small>
+
+  <label for="exts">Đuôi tệp tự chuyển sang TDownload</label>
+  <textarea id="exts"></textarea>
+  <small>Cách nhau bởi dấu cách. Tệp không có đuôi sẽ được nhận diện theo kiểu MIME (zip, exe, pdf, video…).</small>
+
+  <label for="minSize">Chỉ bắt tệp lớn hơn (KB, 0 = mọi kích thước)</label>
+  <input type="number" id="minSize" min="0">
+
+  <label for="exclude">Không bắt link trên các trang</label>
+  <textarea id="exclude" placeholder="vd: mail.google.com drive.google.com"></textarea>
+
+  <div class="bar"><button class="primary" id="save">Lưu</button><span id="msg"></span></div>
+  <script type="module" src="options.js"></script>
+</body>
+</html>

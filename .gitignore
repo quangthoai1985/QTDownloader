@@ -1,0 +1,22 @@
+# Build PyInstaller
+build/
+dist/
+*.spec
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Tệp tạm của TDownload khi thử nghiệm
+*.tdpart
+*.tdhls/
+
+# Hệ điều hành / editor
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/
+.idea/

@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <title>TDownload</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <img src="icons/32.png" alt="" width="24" height="24">
+    <strong>TDownload</strong>
+    <span id="status" class="status">…</span>
+  </header>
+
+  <section class="toggles">
+    <label class="row"><input type="checkbox" id="enabled"> Tự chuyển tải xuống sang TDownload</label>
+    <label class="row"><input type="checkbox" id="exclude"> Bỏ qua trang <span id="host"></span></label>
+  </section>
+
+  <section>
+    <h2>Video &amp; âm thanh trên tab này</h2>
+    <ul id="media"><li class="empty">Chưa phát hiện — hãy phát video để TDownload nhận ra luồng.</li></ul>
+  </section>
+
+  <section class="actions">
+    <button id="all">Tải tất cả liên kết trên trang…</button>
+    <a href="#" id="options">Tuỳ chọn</a>
+  </section>
+  <p class="note">Chỉ tải nội dung bạn có quyền tải. Nội dung có DRM sẽ bị từ chối.</p>
+  <script type="module" src="popup.js"></script>
+</body>
+</html>
