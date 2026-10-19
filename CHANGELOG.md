@@ -11,6 +11,17 @@ Mỗi lần làm việc, Agent thêm mục mới **ở trên cùng** (ngày, vi�
 - Thêm tệp LICENSE (người dùng chọn loại giấy phép) và thông báo giấy phép thư viện trong gói phát hành.
 - Bấm thử menu chuột phải thật trên Chrome/Edge/Cốc Cốc khi app tắt (chưa tự động hoá được: CDP không bấm được menu
   ngữ cảnh, công cụ điều khiển màn hình chỉ được xem trình duyệt).
+- CI GitHub Actions chạy test cho mọi PR; xin chứng thư ký mã cho dự án nguồn mở (SignPath Foundation / Certum).
+
+### Thay đổi
+- 2026-10-19: **phát hành mã nguồn mở theo giấy phép MIT** — ai cũng có thể dùng, sửa và đóng góp. Thêm `LICENSE`,
+  `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, mẫu issue/PR trong `.github/`.
+- `THIRD_PARTY_NOTICES.md` + thư mục `licenses/` (Qt/PySide6 LGPL-3.0, Python PSF, httpx, h2, certifi MPL-2.0…);
+  `tools/package_release.py` đóng chúng vào cả hai gói zip. Test `tests/test_release_files.py` kiểm các tệp này và
+  chặn đưa tư liệu dịch ngược phần mềm khác vào repo.
+- `build.bat` bỏ các gói không dùng mà PyInstaller kéo theo (click, rich, pygments, markdown-it, colorama, zstandard,
+  pywin32) → gói nhỏ hơn, ít giấy phép phải kèm.
+- Hộp thoại Giới thiệu ghi giấy phép MIT và link repo.
 
 ## [1.0.1] — 2026-10-19
 

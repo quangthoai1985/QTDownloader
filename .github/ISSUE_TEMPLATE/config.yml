@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Báo lỗ hổng bảo mật (riêng tư)
+    url: https://github.com/quangthoai1985/TDownload/security/advisories/new
+    about: Đừng mở issue công khai cho lỗ hổng bảo mật.

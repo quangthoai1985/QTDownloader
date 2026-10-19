@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
     QToolButton, QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget,
 )
 
-from .. import __version__
+from .. import GITHUB_REPO, __version__
 from ..core import categories
 from ..core.util import filename_from_url, fmt_speed
 from . import icons
@@ -557,7 +557,10 @@ class MainWindow(QMainWindow):
             "<p>Trình quản lý & tăng tốc tải xuống: chia đoạn động đa kết nối, tải tiếp sau khi mất mạng/tắt máy, "
             "hàng đợi, lịch hẹn, giới hạn tốc độ, tải video HLS, tải đồng thời từ nhiều nguồn, kiểm tra checksum, "
             "nhận link từ Chrome/Edge.</p>"
-            "<p>Lấy cảm hứng từ cơ chế của Internet Download Manager, viết mới hoàn toàn bằng Python + Qt.</p>"
+            "<p>Lấy cảm hứng từ Internet Download Manager, viết bằng Python + Qt.</p>"
+            f"<p>Mã nguồn mở theo giấy phép MIT — <a href='https://github.com/{GITHUB_REPO}'>github.com/{GITHUB_REPO}</a>. "
+            "Thư viện bên thứ ba (Qt/PySide6 theo LGPL-3.0, Python, httpx…): xem tệp THIRD_PARTY_NOTICES.md "
+            "kèm theo.</p>"
             "<p style='color:gray'>Chỉ tải nội dung bạn có quyền tải. TDownload không vượt DRM.</p>"))
 
     # ------------------------------------------------------------------ menu chuột phải / nhấp đúp

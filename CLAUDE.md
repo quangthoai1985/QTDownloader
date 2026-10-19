@@ -5,13 +5,13 @@
 
 ## 1. Dự án là gì
 
-**TDownload** là trình quản lý & tăng tốc tải xuống cho Windows, tái tạo *hành vi* của Internet Download Manager
-(IDM): chia đoạn động đa kết nối, tải tiếp sau khi mất mạng/tắt máy, hàng đợi, lịch hẹn, giới hạn tốc độ, tải HLS,
-bắt link từ trình duyệt qua extension. Viết bằng **Python 3.14 + PySide6 + httpx**. Thiết kế engine:
-[docs/THIET_KE.md](docs/THIET_KE.md).
+**TDownload** là trình quản lý & tăng tốc tải xuống cho Windows theo kiểu Internet Download Manager (IDM): chia đoạn
+động đa kết nối, tải tiếp sau khi mất mạng/tắt máy, hàng đợi, lịch hẹn, giới hạn tốc độ, tải HLS, bắt link từ trình
+duyệt qua extension. Viết bằng **Python 3.14 + PySide6 + httpx**. **Mã nguồn mở, giấy phép MIT**; nhận đóng góp từ
+mọi người ([CONTRIBUTING.md](CONTRIBUTING.md)). Thiết kế engine: [docs/THIET_KE.md](docs/THIET_KE.md).
 
 Trạng thái: **v1.0.1 đã phát hành** (GitHub Release `v1.0.1`; 1.0.1 = extension dùng được khi app chưa chạy qua
-giao thức `tdownload://`) — 41/41 test qua, extension đã thử trên Edge 155 thật (cả giao thức đăng ký thật), bản
+giao thức `tdownload://`) — 45/45 test qua, extension đã thử trên Edge 155 thật (cả giao thức đăng ký thật), bản
 PyInstaller `TDownload.exe` (~90 MB) đã thử tải end-to-end. **Chưa thử với máy chủ thật trên Internet**
 (Google Drive, Fshare, Mediafire, CDN lớn) — đây là việc ưu tiên số 1.
 
@@ -19,7 +19,9 @@ PyInstaller `TDownload.exe` (~90 MB) đã thử tải end-to-end. **Chưa thử 
 
 1. **Chỉ cài đặt từ chuẩn công khai (RFC) và hành vi quan sát được từ bên ngoài.** Không dịch ngược phần mềm khác,
    không sao chép mã/pseudocode, chuỗi, icon, âm thanh của bên thứ ba; không dùng tên "IDM" cho sản phẩm; không
-   làm/không mô tả bất kỳ bước bẻ khoá license nào.
+   làm/không mô tả bất kỳ bước bẻ khoá license nào. Không nhận đóng góp có nguồn gốc như vậy.
+2. **Giấy phép MIT**: mã mới phải tương thích MIT. Thêm thư viện vào gói `.exe` thì cập nhật `THIRD_PARTY_NOTICES.md`
+   và `licenses/` (test `tests/test_release_files.py` kiểm các tệp này có mặt).
 3. **Không vượt DRM**: HLS có `#EXT-X-KEY` (AES-128/SAMPLE-AES…) phải bị từ chối kèm thông báo.
 4. Không đưa mã engine vào UI; UI chỉ gọi engine qua `engine.call(...)` và đọc `engine.snapshot`.
 5. Tệp `.bat` phải **ASCII + CRLF** (xem §6). In tiếng Việt ra console phải `reconfigure(encoding="utf-8")`.
@@ -30,7 +32,7 @@ PyInstaller `TDownload.exe` (~90 MB) đã thử tải end-to-end. **Chưa thử 
 python -m pip install -r requirements.txt
 python -m tdownload                 # GUI (hoặc run.bat); --minimized để khởi động xuống khay
 python -m tdownload.cli URL -c 16   # headless
-python -m pytest -q tests           # ~70 giây, 41 test (có chạy node tests/ext_harness.mjs nếu có Node)
+python -m pytest -q tests           # ~70 giây, 45 test (có chạy node tests/ext_harness.mjs nếu có Node)
 python tests/server.py --port 8765  # máy chủ thử nghiệm để bấm thử trên GUI
 build.bat [thư_mục]                 # → <thư_mục mặc định dist>\TDownload\TDownload.exe
 python tools/package_release.py [--dist thư_mục]   # → release\*.zip + SHA256SUMS.txt
@@ -154,8 +156,11 @@ Giới hạn **cố hữu** (chấp nhận, không phải bug):
 4. Tự làm mới link hết hạn qua extension; chế độ nhường mạng (đo RTT); hồ sơ tốc độ theo giờ.
 5. DASH (`.mpd`) + ghép audio/video bằng ffmpeg; tích hợp yt-dlp (tuỳ chọn).
 6. Bộ cài Inno Setup + ký Authenticode; tự cài bản mới (hiện chỉ tải zip, người dùng tự giải nén); extension cho Firefox.
-7. Thêm tệp LICENSE (repo công khai nhưng chưa có giấy phép → mặc định "giữ mọi quyền"; người dùng quyết định loại
-   giấy phép) và kèm thông báo giấy phép của PySide6/Qt (LGPL), httpx, h2 trong gói phát hành.
+   Ký số: máy có `signtool` (SDK 10.0.26100) nhưng **chưa có chứng thư Code Signing**. Dự án đã MIT → có thể xin
+   SignPath Foundation (miễn phí, cần build từ CI) hoặc Certum Open Source Code Signing. Token chữ ký số Viettel
+   (thuế/hoá đơn) thường không có EKU Code Signing; gốc "Vietnam National Root CA" chỉ được tin trên máy đã cài phần
+   mềm CA Việt Nam.
+7. CI GitHub Actions (Windows) chạy `pytest` cho mọi PR — cần cho người đóng góp và cho SignPath.
 8. Nợ kỹ thuật nhỏ: `RateLimiter` hơi giới hạn quá tay khi nhiều worker; icon không đổi màu khi đổi sáng/tối lúc
    đang chạy; chưa có SOCKS proxy (thiếu `socksio`), FTP, NTLM; chưa đo hiệu năng bảng với hàng nghìn mục.
 

@@ -1,8 +1,8 @@
 # TDownload
 
-Trình quản lý & tăng tốc tải xuống cho Windows, mô phỏng cơ chế của Internet Download Manager
-(chia đoạn động đa kết nối, tải tiếp, hàng đợi, lịch hẹn, bắt link từ trình duyệt) — viết mới hoàn toàn
-bằng Python + Qt.
+Trình quản lý & tăng tốc tải xuống cho Windows theo kiểu Internet Download Manager (chia đoạn động đa kết nối,
+tải tiếp, hàng đợi, lịch hẹn, bắt link từ trình duyệt) — mã nguồn mở, viết bằng Python + Qt.
+Giấy phép [MIT](LICENSE) — ai cũng có thể dùng, sửa và [đóng góp](CONTRIBUTING.md).
 
 - Thiết kế engine tải: [docs/THIET_KE.md](docs/THIET_KE.md)
 - Đề xuất tính năng tiếp theo: [docs/DE_XUAT_TINH_NANG.md](docs/DE_XUAT_TINH_NANG.md)
@@ -98,3 +98,15 @@ Xem thử máy chủ đó bằng giao diện: `python tests/server.py` rồi th�
 
 - Tốc độ tăng chỉ khi máy chủ hỗ trợ Range và giới hạn theo từng kết nối; server giới hạn theo IP thì đa kết nối không giúp.
 - Chỉ tải nội dung bạn có quyền tải. TDownload không vượt DRM và không dùng mã, icon hay thương hiệu của IDM.
+  "Internet Download Manager"/"IDM" là thương hiệu của chủ sở hữu tương ứng; TDownload không liên quan tới họ.
+
+## Đóng góp
+
+Mọi người đều có thể đóng góp: báo lỗi, đề xuất tính năng, sửa tài liệu hay gửi mã. Xem
+[CONTRIBUTING.md](CONTRIBUTING.md) (cách chạy, test, quy ước) và [Quy tắc ứng xử](CODE_OF_CONDUCT.md). Lỗ hổng bảo
+mật xin báo riêng theo [SECURITY.md](SECURITY.md).
+
+## Giấy phép
+
+TDownload phát hành theo giấy phép [MIT](LICENSE). Bản đóng gói `.exe` có kèm các thư viện bên thứ ba (Qt/PySide6
+theo LGPL-3.0, Python, httpx…) — xem [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
