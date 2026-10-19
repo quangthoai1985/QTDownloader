@@ -10,9 +10,10 @@
 duyệt qua extension. Viết bằng **Python 3.14 + PySide6 + httpx**. **Mã nguồn mở, giấy phép MIT**; nhận đóng góp từ
 mọi người ([CONTRIBUTING.md](CONTRIBUTING.md)). Thiết kế engine: [docs/THIET_KE.md](docs/THIET_KE.md).
 
-Trạng thái: **v1.0.1 đã phát hành** (GitHub Release `v1.0.1`; 1.0.1 = extension dùng được khi app chưa chạy qua
-giao thức `tdownload://`) — 45/45 test qua, extension đã thử trên Edge 155 thật (cả giao thức đăng ký thật), bản
-PyInstaller `TDownload.exe` (~90 MB) đã thử tải end-to-end. **Chưa thử với máy chủ thật trên Internet**
+Trạng thái: **v1.0.2 đã phát hành** (GitHub Release `v1.0.2` = bản mã nguồn mở MIT đầu tiên, gói zip kèm `LICENSE`
++ giấy phép thư viện; 1.0.1 = extension dùng được khi app chưa chạy qua `tdownload://`). Repo GitHub đã được tạo lại
+ngày 2026-10-19 với lịch sử sạch (đừng tham chiếu mã commit cũ). 45/45 test qua, extension đã thử trên Edge 155 thật
+(cả giao thức đăng ký thật), bản PyInstaller `TDownload.exe` (~86 MB) đã thử tải end-to-end. **Chưa thử với máy chủ thật trên Internet**
 (Google Drive, Fshare, Mediafire, CDN lớn) — đây là việc ưu tiên số 1.
 
 ## 2. Quy tắc bắt buộc
