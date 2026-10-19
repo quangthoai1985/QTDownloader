@@ -120,7 +120,7 @@ Tệp đang tải tên `<tên>.tdpart` cạnh tệp đích; xong thì `os.replac
 | Test giới hạn 503 thỉnh thoảng trượt | Tệp 4 MB < 2 × ngưỡng chia → không mở kết nối thứ 3 | Tệp thử 12 MB |
 | `build.bat` lỗi `PermissionError … qwindows.dll` | `dist\TDownload\TDownload.exe` đang chạy (người dùng mở) giữ tệp | Không tắt app của người dùng; build ra thư mục khác: `build.bat build\release-dist` |
 | Bản thử nghiệm "đánh thức" app đang dùng | Tên QLocalServer chung cho mọi thư mục dữ liệu | Tên gắn hash thư mục dữ liệu (`ui/app.py: server_name`). Khi thử exe vẫn phải đổi `api_port` trong `settings.json` tạm vì app thật giữ cổng 41888 |
-| Báo bản mới không chạy với repo riêng tư | API GitHub không đăng nhập trả 404 cho repo private | Chấp nhận; cần repo công khai (không nhúng token vào app) |
+| Báo bản mới không chạy với repo riêng tư | API GitHub không đăng nhập trả 404 cho repo private | Repo đã chuyển công khai (2026-10-19); không bao giờ nhúng token vào app. Đã kiểm với GitHub thật: không đăng nhập đọc được `v1.0.0`, SHA-256 khớp |
 
 Giới hạn **cố hữu** (chấp nhận, không phải bug):
 - Không bắt được link từ ứng dụng ngoài trình duyệt (cần driver mạng ký số — không làm).
@@ -131,14 +131,14 @@ Giới hạn **cố hữu** (chấp nhận, không phải bug):
 
 1. **Kiểm thử thực tế**: tải từ ≥ 20 host thật (Google Drive, Fshare, Mediafire, GitHub Releases, CDN VN, link có
    chữ ký hết hạn). Ghi tỉ lệ thành công, so tốc độ với IDM; sửa lỗi phát sinh.
-2. **Công khai repo** (nếu người dùng đồng ý) để tính năng báo bản mới hoạt động; hoặc chuyển sang kênh cập nhật
-   khác (trang tĩnh/manifest ký Ed25519).
-3. **Bảo mật API cục bộ**: hiện mọi tiến trình trên máy đều POST được `/api/add`. Thêm token ghép đôi
+2. **Bảo mật API cục bộ**: hiện mọi tiến trình trên máy đều POST được `/api/add`. Thêm token ghép đôi
    (`X-TDownload-Token`) giữa app và extension.
-4. Quét Windows Defender sau khi tải; tự giải nén; phát hiện trùng lặp; bản portable.
-5. Tự làm mới link hết hạn qua extension; chế độ nhường mạng (đo RTT); hồ sơ tốc độ theo giờ.
-6. DASH (`.mpd`) + ghép audio/video bằng ffmpeg; tích hợp yt-dlp (tuỳ chọn).
-7. Bộ cài Inno Setup + ký Authenticode; tự cài bản mới (hiện chỉ tải zip, người dùng tự giải nén); extension cho Firefox.
+3. Quét Windows Defender sau khi tải; tự giải nén; phát hiện trùng lặp; bản portable.
+4. Tự làm mới link hết hạn qua extension; chế độ nhường mạng (đo RTT); hồ sơ tốc độ theo giờ.
+5. DASH (`.mpd`) + ghép audio/video bằng ffmpeg; tích hợp yt-dlp (tuỳ chọn).
+6. Bộ cài Inno Setup + ký Authenticode; tự cài bản mới (hiện chỉ tải zip, người dùng tự giải nén); extension cho Firefox.
+7. Thêm tệp LICENSE (repo công khai nhưng chưa có giấy phép → mặc định "giữ mọi quyền"; người dùng quyết định loại
+   giấy phép) và kèm thông báo giấy phép của PySide6/Qt (LGPL), httpx, h2 trong gói phát hành.
 8. Nợ kỹ thuật nhỏ: `RateLimiter` hơi giới hạn quá tay khi nhiều worker; icon không đổi màu khi đổi sáng/tối lúc
    đang chạy; chưa có SOCKS proxy (thiếu `socksio`), FTP, NTLM; chưa đo hiệu năng bảng với hàng nghìn mục.
 

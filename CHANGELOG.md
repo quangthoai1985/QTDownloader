@@ -8,8 +8,11 @@ Mỗi lần làm việc, Agent thêm mục mới **ở trên cùng** (ngày, vi�
 ### Việc còn dở / ưu tiên kế tiếp
 - Kiểm thử với máy chủ thật trên Internet (chưa làm lần nào).
 - Token ghép đôi cho API `127.0.0.1:41888`.
-- Repo đang **riêng tư** → app không đăng nhập không đọc được Release (API trả 404, app báo "chưa có bản phát
-  hành công khai"). Muốn tính năng báo bản mới hoạt động cho người dùng thì cần repo công khai.
+- Thêm tệp LICENSE (người dùng chọn loại giấy phép) và thông báo giấy phép thư viện trong gói phát hành.
+
+### Thay đổi
+- 2026-10-19: repo chuyển sang **công khai** để tính năng báo bản mới hoạt động; đã kiểm với GitHub thật (không
+  đăng nhập đọc được Release `v1.0.0`, SHA-256 của gói khớp).
 - Xem thêm [CLAUDE.md §7](CLAUDE.md#7-việc-cần-làm-tiếp-theo-thứ-tự-ưu-tiên).
 
 ## [1.0.0] — 2026-10-19
