@@ -15,23 +15,25 @@ function browserDownload(url) {
   return chrome.downloads.download({ url });
 }
 
-chrome.downloads.onCreated.addListener(async (item) => {
+// Quyết định lượt tải có giao cho app không; nếu có thì huỷ bên trình duyệt và gửi sang app.
+// Trả về true khi đã nhận (trình duyệt không được tải tiếp), false khi để trình duyệt tự tải.
+async function intercept(item) {
   const cfg = await getCfg();
-  if (!cfg.enabled) return;
-  if (toBrowser.delete(item.url) || toBrowser.delete(item.finalUrl)) return;
+  if (!cfg.enabled) return false;
+  if (toBrowser.delete(item.url) || toBrowser.delete(item.finalUrl)) return false;
   const url = item.finalUrl || item.url;
-  if (!/^https?:/i.test(url)) return;               // blob:/data:/file: không chuyển được
-  if (item.state && item.state !== "in_progress") return;
-  if (hostExcluded(cfg, url) || (item.referrer && hostExcluded(cfg, item.referrer))) return;
+  if (!/^https?:/i.test(url)) return false;         // blob:/data:/file: không chuyển được
+  if (item.state && item.state !== "in_progress") return false;
+  if (hostExcluded(cfg, url) || (item.referrer && hostExcluded(cfg, item.referrer))) return false;
   const name = (item.filename || "").split(/[\\/]/).pop() || nameFromUrl(url);
   const ext = extOf(name);
   const wanted = cfg.exts.toLowerCase().split(/[\s,]+/).filter(Boolean);
   const byExt = ext && wanted.includes(ext);
   const byMime = !ext && FILE_MIMES.test(item.mime || "");
-  if (!byExt && !byMime) return;
+  if (!byExt && !byMime) return false;
   const size = item.totalBytes || item.fileSize || 0;
-  if (cfg.minSizeKB > 0 && size > 0 && size < cfg.minSizeKB * 1024) return;
-  if (!(await ping(cfg))) return;                   // app chưa chạy → để trình duyệt tự tải
+  if (cfg.minSizeKB > 0 && size > 0 && size < cfg.minSizeKB * 1024) return false;
+  if (!(await ping(cfg))) return false;             // app chưa chạy → để trình duyệt tự tải
 
   try {
     await chrome.downloads.cancel(item.id);
@@ -54,7 +56,22 @@ chrome.downloads.onCreated.addListener(async (item) => {
     // gửi thất bại → mở lại tải bằng trình duyệt để người dùng không mất link
     browserDownload(url);
   }
-});
+  return true;
+}
+
+if (chrome.downloads.onDeterminingFilename) {
+  // Chrome/Edge/Cốc Cốc: trình duyệt TẠM GIỮ lượt tải cho tới khi extension gọi suggest() — hộp thoại
+  // "Lưu thành…" và khung/bong bóng tải xuống chỉ hiện sau bước này. Huỷ ngay tại đây thì trình duyệt không
+  // hiện gì; onCreated thì chạy song song với giao diện tải của trình duyệt nên luôn huỷ muộn.
+  chrome.downloads.onDeterminingFilename.addListener((item, suggest) => {
+    intercept(item)
+      .then((taken) => { if (!taken) suggest(); })
+      .catch(() => suggest());
+    return true;                                    // gọi suggest() bất đồng bộ
+  });
+} else {
+  chrome.downloads.onCreated.addListener((item) => void intercept(item));
+}
 
 // ------------------------------------------------------------------ menu chuột phải
 chrome.runtime.onInstalled.addListener(() => {

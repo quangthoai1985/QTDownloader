@@ -45,7 +45,8 @@ globalThis.chrome = {
   runtime: { onInstalled: ev("installed"), onMessage: ev("message"), lastError: undefined,
              getURL: (p) => "chrome-extension://td/" + p },
   contextMenus: { onClicked: ev("menu"), removeAll: (cb) => cb && cb(), create: () => {} },
-  downloads: { onCreated: ev("created"), download: rec("download", () => 1), cancel: rec("cancel"), erase: rec("erase") },
+  downloads: { onCreated: ev("created"), onDeterminingFilename: ev("determining"),
+               download: rec("download", () => 1), cancel: rec("cancel"), erase: rec("erase") },
   webRequest: { onHeadersReceived: ev("headers") },
   tabs: {
     onUpdated: ev("updated"), onRemoved: ev("removed"),
@@ -119,7 +120,19 @@ assert.equal(called("download").length, 0);
 assert.equal(called("notify")[0][1].title, "Chưa gửi được sang TDownload");
 passed++;
 
-// 5. App chạy nhưng không nhận link → trình duyệt tải; onCreated của chính lượt tải đó không bắt lại (không lặp)
+// Gọi onDeterminingFilename như trình duyệt; trả về true nếu extension trả lượt tải lại cho trình duyệt (suggest)
+async function determine(item) {
+  let suggested = false;
+  assert.equal(on.determining(item, () => { suggested = true; }), true, "phải giữ lượt tải (return true)");
+  const end = Date.now() + 3000;
+  while (!suggested && Date.now() < end && !(called("erase").length && added.length)) {
+    await new Promise((r) => setTimeout(r, 20));
+  }
+  await new Promise((r) => setTimeout(r, 50));
+  return suggested;
+}
+
+// 5. App chạy nhưng không nhận link → trình duyệt tải; lượt tải đó không bị bắt lại (không lặp)
 reset({ protocol: true });
 launchApp();
 addFails = true;
@@ -127,12 +140,35 @@ await new Promise((r) => setTimeout(r, 200));
 await menuLink("https://h.vn/d.zip");
 assert.deepEqual(called("download").map((c) => c[1].url), ["https://h.vn/d.zip"]);
 assert.equal(called("notify")[0][1].title, "Đã chuyển cho trình duyệt tải");
-await on.created({ id: 5, url: "https://h.vn/d.zip", filename: "d.zip", state: "in_progress" });
+assert.equal(await determine({ id: 5, url: "https://h.vn/d.zip", filename: "d.zip", state: "in_progress" }), true);
 assert.equal(called("cancel").length, 0);
 assert.equal(added.length, 1);                      // chỉ lần gửi từ menu
+passed++;
+
+// 6. App đang chạy (khay hệ thống) → huỷ ngay ở bước chọn tên tệp: KHÔNG gọi suggest, nên trình duyệt không hiện
+//    hộp thoại "Lưu thành…"/khung tải xuống; link sang app
+reset({ protocol: true });
+addFails = false;
+assert.equal(await determine({ id: 6, url: "https://h.vn/e.zip", filename: "e.zip", state: "in_progress",
+                               referrer: "https://h.vn/", totalBytes: 5000000 }), false);
+assert.deepEqual(called("cancel").map((c) => c[1]), [6]);
+assert.deepEqual(called("erase").map((c) => c[1]), [{ id: 6 }]);
+assert.deepEqual(added.map((a) => a.url), ["https://h.vn/e.zip"]);
+assert.equal(added[0].filename, "e.zip");
+// tệp không thuộc danh sách đuôi → trả lại trình duyệt ngay
+reset({ protocol: true });
+assert.equal(await determine({ id: 7, url: "https://h.vn/trang.html", filename: "trang.html", state: "in_progress" }), true);
+assert.equal(called("cancel").length, 0);
 await stopApp();
 passed++;
 
-console.log(`ext_harness: ${passed}/5 kịch bản qua`);
+// 7. App tắt → trả lại trình duyệt (suggest), không huỷ
+reset({ protocol: true });
+assert.equal(await determine({ id: 8, url: "https://h.vn/f.zip", filename: "f.zip", state: "in_progress" }), true);
+assert.equal(called("cancel").length, 0);
+assert.equal(added.length, 0);
+passed++;
+
+console.log(`ext_harness: ${passed}/7 kịch bản qua`);
 await new Promise((r) => setTimeout(r, 200));   // để socket đóng hẳn rồi mới thoát (bộ hẹn giờ huy hiệu 15 s)
 process.exit(0);

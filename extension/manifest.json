@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "TDownload — Tích hợp trình duyệt",
   "short_name": "TDownload",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Chuyển tải xuống từ trình duyệt sang TDownload (đa kết nối, tải tiếp, hàng đợi) và phát hiện video HLS/MP4.",
   "minimum_chrome_version": "116",
   "permissions": ["downloads", "contextMenus", "cookies", "storage", "webRequest", "scripting", "activeTab",

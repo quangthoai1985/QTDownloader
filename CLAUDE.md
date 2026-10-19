@@ -81,7 +81,7 @@ UI (PySide6, luồng chính) ──engine.call()──► core/engine.py (luồn
 | `ui/main_window.py` | Cửa sổ chính | Toolbar, cây phân loại, bảng (`table_model.py`), khay, clipboard, kéo-thả, nhập `.ef2` |
 | `ui/progress_dialog.py` | Cửa sổ tiến trình | `SegmentBar` tô màu theo worker sở hữu đoạn; xử lý "tải xong" nằm ở `MainWindow._on_completed` |
 | `ui/dialogs.py` | Hộp thoại | `vi_buttons()`/`ask()` thay chữ nút chuẩn của Qt bằng tiếng Việt |
-| `extension/` | MV3 (Chrome/Edge/Cốc Cốc) | `downloads.onCreated` → ping app → cancel+erase → POST. Cookie lấy **theo từng link** (`chrome.cookies.getAll({url})`). `webRequest.onHeadersReceived` dò HLS/video → `storage.session` theo tab. App tắt: bắt tự động thì để trình duyệt tải; menu/popup gọi `ensureApp` → mở **tab tạm** `launch.html` tự điều hướng tới `tdownload://` (không đụng tab người dùng; origin của extension → hộp thoại có ô "Luôn cho phép"), chờ ping 10 s (15 s nếu app từng báo `protocol:true`; `protocol:false` thì bỏ qua) → không được thì `downloads.download` + `warn()` (huy hiệu, tiêu đề, `notifications`) |
+| `extension/` | MV3 (Chrome/Edge/Cốc Cốc) | `downloads.onDeterminingFilename` (trình duyệt tạm giữ lượt tải, chưa hiện UI) → ping app → nhận: cancel+erase, **không** gọi `suggest()`, POST; không nhận: `suggest()`. Không có API này thì dùng `onCreated`. Cookie lấy **theo từng link** (`chrome.cookies.getAll({url})`). `webRequest.onHeadersReceived` dò HLS/video → `storage.session` theo tab. App tắt: bắt tự động thì để trình duyệt tải; menu/popup gọi `ensureApp` → mở **tab tạm** `launch.html` tự điều hướng tới `tdownload://` (không đụng tab người dùng; origin của extension → hộp thoại có ô "Luôn cho phép"), chờ ping 10 s (15 s nếu app từng báo `protocol:true`; `protocol:false` thì bỏ qua) → không được thì `downloads.download` + `warn()` (huy hiệu, tiêu đề, `notifications`) |
 
 Trạng thái mục tải: `queued → connecting → downloading → (merging|verifying) → completed | error | paused`.
 Tệp đang tải tên `<tên>.tdpart` cạnh tệp đích; xong thì `os.replace`.
@@ -139,6 +139,7 @@ Tệp đang tải tên `<tên>.tdpart` cạnh tệp đích; xong thì `os.replac
 | Hồ sơ Edge tạm bị tự đăng nhập/đồng bộ tài khoản Windows (xuất hiện extension của người dùng) | Edge implicit sign-in | Luôn thêm `--disable-sync`; xoá hồ sơ tạm sau khi thử, không đọc dữ liệu trong đó |
 | Thử giao thức thật mà không đụng app thật | Lệnh trong registry không mang theo `TDOWNLOAD_DATA` | (Được người dùng cho phép) đăng ký tạm với lệnh trỏ vào script đặt `TDOWNLOAD_DATA` tạm rồi gọi `main()`; thử xong `integration.unregister_protocol()` |
 | Windows truyền `tdownload://open/?minimized=1` | ShellExecute chuẩn hoá URL, chèn `/` trước `?` | `parse_protocol_url` bỏ `/` thừa ở tên hành động |
+| App chạy dưới khay mà trình duyệt vẫn hiện hộp thoại/khung tải xuống cạnh hộp thoại TDownload | `downloads.onCreated` chạy song song với UI tải của trình duyệt; ping + cancel tới muộn | Bắt ở `downloads.onDeterminingFilename` (listener `return true`, trình duyệt giữ lượt tải chờ `suggest()`); nhận thì cancel+erase và **không** gọi `suggest`. Mọi nhánh không nhận **phải** gọi `suggest()`, kể cả khi lỗi, nếu không lượt tải treo |
 
 Giới hạn **cố hữu** (chấp nhận, không phải bug):
 - Không bắt được link từ ứng dụng ngoài trình duyệt (cần driver mạng ký số — không làm).

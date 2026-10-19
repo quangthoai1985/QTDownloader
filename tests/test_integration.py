@@ -130,4 +130,4 @@ def test_extension_falls_back_when_app_missing():
     r = subprocess.run(["node", os.path.join("tests", "ext_harness.mjs")], cwd=ROOT, capture_output=True,
                        text=True, encoding="utf-8", timeout=90)
     assert r.returncode == 0, r.stdout + r.stderr
-    assert "5/5" in r.stdout
+    assert "7/7" in r.stdout

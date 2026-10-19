@@ -13,6 +13,16 @@ Mỗi lần làm việc, Agent thêm mục mới **ở trên cùng** (ngày, vi�
 - CI GitHub Actions chạy test cho mọi PR; xin chứng thư ký mã cho dự án nguồn mở (SignPath Foundation / Certum).
 - Bật "Private vulnerability reporting" trên GitHub (SECURITY.md hướng người báo lỗ hổng tới đó).
 
+## [1.0.3] — 2026-10-19
+
+### Sửa lỗi
+- Extension: app đang chạy (kể cả dưới khay) mà trình duyệt **vẫn hiện hộp thoại/khung tải xuống** song song với hộp
+  thoại của TDownload. Nguyên nhân: bắt ở `downloads.onCreated` — sự kiện này chạy song song với giao diện tải của
+  trình duyệt nên luôn huỷ muộn. Nay bắt ở `downloads.onDeterminingFilename`: trình duyệt tạm giữ lượt tải tới khi
+  extension gọi `suggest()`; nhận thì huỷ ngay tại đó (không gọi `suggest`) nên trình duyệt không hiện gì, không nhận
+  thì `suggest()` để trình duyệt tải bình thường. Trình duyệt không có API này thì vẫn dùng `onCreated`.
+  `tests/ext_harness.mjs` thêm kịch bản 6–7.
+
 ## [1.0.2] — 2026-10-19
 
 Bản phát hành mã nguồn mở đầu tiên.
