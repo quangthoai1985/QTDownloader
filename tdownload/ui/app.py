@@ -121,5 +121,6 @@ def main(argv: list[str] | None = None) -> int:
         win.show()
     for a in launch.adds:
         QTimer.singleShot(300, lambda a=a: open_add(a))
+    bridge.run(engine.ui_ready)   # cửa sổ đã nối sự kiện → nhận cả link extension gửi trong lúc app đang mở
     app.aboutToQuit.connect(engine.shutdown)
     return app.exec()

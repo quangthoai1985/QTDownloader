@@ -17,7 +17,7 @@ async function main() {
   if (!info) {
     $("launch").hidden = false;
     $("launchHint").textContent = known
-      ? "Trình duyệt sẽ hỏi “Mở TDownload?” — chọn Mở."
+      ? "Trình duyệt sẽ hỏi có mở TDownload không — chọn Mở, tích “luôn cho phép” để lần sau khỏi hỏi."
       : "Cần bật một lần trong app: Tuỳ chọn → Trình duyệt → “Cho phép trình duyệt mở TDownload”.";
     $("open").onclick = async () => {
       $("open").disabled = true;

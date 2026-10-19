@@ -97,10 +97,12 @@ async function ensureApp(cfg, tabId, manual = false) {
   setWaiting(true);
   let tmp;
   try {
-    // Mở ở tab tạm thay vì điều hướng tab hiện tại: không đụng tới trang người dùng đang xem.
-    // Giao thức đã đăng ký → trình duyệt hỏi "Mở TDownload?"; chưa đăng ký → không có gì xảy ra.
+    // Mở ở tab tạm (launch.html tự điều hướng tới tdownload://) thay vì điều hướng tab hiện tại: không đụng
+    // tới trang người dùng đang xem. Giao thức đã đăng ký → trình duyệt hỏi "Mở TDownload?" kèm ô "Luôn cho
+    // phép" (nhờ origin của extension); chưa đăng ký → không có gì xảy ra.
+    const target = manual ? "tdownload://open" : "tdownload://open?minimized=1";
     tmp = await chrome.tabs.create({
-      url: manual ? "tdownload://open" : "tdownload://open?minimized=1",
+      url: chrome.runtime.getURL("launch.html") + "?u=" + encodeURIComponent(target),
       active: true, ...(tabId !== undefined ? { openerTabId: tabId } : {}),
     });
     // app khởi động mất 3–4 giây, người dùng còn phải bấm "Mở" trong hộp thoại; biết chắc giao thức đã
@@ -119,8 +121,9 @@ async function ensureApp(cfg, tabId, manual = false) {
 async function closeTempTab(id) {
   try {
     const t = await chrome.tabs.get(id);
-    const u = t.pendingUrl || t.url || "";   // tdownload:// không lộ URL (ngoài host_permissions) → ""
-    if (!u || u.startsWith("tdownload:") || u === "about:blank") await chrome.tabs.remove(id);
+    const u = t.pendingUrl || t.url || "";   // không có quyền xem URL → "" (vẫn là tab của mình)
+    const ours = !u || u.startsWith(chrome.runtime.getURL("launch.html")) || u.startsWith("tdownload:");
+    if (ours) await chrome.tabs.remove(id);   // người dùng đã chuyển tab sang trang khác thì để nguyên
   } catch {
     // người dùng đã tự đóng tab
   }

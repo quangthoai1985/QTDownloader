@@ -42,8 +42,10 @@ def test_current_version_is_latest(engine, srv):
 def test_skipped_version_is_silent_on_auto_check(engine, srv):
     events = []
     engine.listeners.append(lambda k, p: events.append(k))
-    engine.update_url = f"{srv}/gh/latest/v1.0.1"
-    engine.call_sync(engine.skip_update, "1.0.1")
+    major, minor, patch = parse_version(__version__)
+    newer = f"{major}.{minor}.{patch + 1}"              # luôn mới hơn bản đang chạy, kể cả sau khi tăng phiên bản
+    engine.update_url = f"{srv}/gh/latest/v{newer}"
+    engine.call_sync(engine.skip_update, newer)
     assert engine.call_sync(engine.check_update, False)["status"] == "newer"
     assert "update_available" not in events            # tự kiểm tra: im lặng với bản đã bỏ qua
     engine.call_sync(engine.check_update, True)

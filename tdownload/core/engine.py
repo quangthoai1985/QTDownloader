@@ -60,6 +60,9 @@ class Engine:
         self.io_pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix="tdl-io")
         self.listeners: list[Callable[[str, object], None]] = []
         self.ui_attached = False
+        # App vừa mở (vd extension mở qua tdownload:// rồi gửi link ngay): API đã nhận nhưng cửa sổ chưa nối sự
+        # kiện → giữ lại tới khi giao diện gọi ui_ready(), không làm mất link.
+        self._ui_backlog: list[tuple[str, object]] | None = []
         self.queue_running = False
         self._queue_by_schedule = False
         self._requeue: set[str] = set()
@@ -159,11 +162,20 @@ class Engine:
 
     # ================================================================ sự kiện / lưu
     def emit(self, kind: str, payload) -> None:
+        if self.ui_attached and self._ui_backlog is not None:
+            self._ui_backlog.append((kind, payload))
+            return
         for listener in list(self.listeners):
             try:
                 listener(kind, payload)
             except Exception:
                 log.exception("Listener lỗi với sự kiện %s", kind)
+
+    async def ui_ready(self) -> None:
+        """Giao diện đã nối xong sự kiện → phát lại những sự kiện đến sớm (link từ trình duyệt…)."""
+        backlog, self._ui_backlog = self._ui_backlog or [], None
+        for kind, payload in backlog:
+            self.emit(kind, payload)
 
     def changed(self, item: M.DownloadItem, persist: bool = False) -> None:
         self._dirty.add(item.id)

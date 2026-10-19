@@ -563,7 +563,8 @@ class SettingsDialog(QDialog):
         pbox.setSpacing(2)
         pbox.addWidget(self.protocol)
         phint = _muted("Khi app chưa chạy, bấm “Tải bằng TDownload” hoặc nút “Mở TDownload” trên extension sẽ "
-                       "mở app (trình duyệt hỏi “Mở TDownload?” — chọn Mở). Ghi vào "
+                       "mở app (trình duyệt hỏi có mở TDownload không — chọn Mở, tích “luôn cho phép” để lần sau "
+                       "khỏi hỏi). Ghi vào "
                        "<code>HKCU\\Software\\Classes\\tdownload</code>; bỏ chọn thì gỡ.")
         phint.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         pbox.addWidget(phint)

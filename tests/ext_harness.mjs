@@ -42,14 +42,15 @@ const rec = (name, impl = () => undefined) => async (...a) => { calls.push([name
 const called = (name) => calls.filter((c) => c[0] === name);
 
 globalThis.chrome = {
-  runtime: { onInstalled: ev("installed"), onMessage: ev("message"), lastError: undefined },
+  runtime: { onInstalled: ev("installed"), onMessage: ev("message"), lastError: undefined,
+             getURL: (p) => "chrome-extension://td/" + p },
   contextMenus: { onClicked: ev("menu"), removeAll: (cb) => cb && cb(), create: () => {} },
   downloads: { onCreated: ev("created"), download: rec("download", () => 1), cancel: rec("cancel"), erase: rec("erase") },
   webRequest: { onHeadersReceived: ev("headers") },
   tabs: {
     onUpdated: ev("updated"), onRemoved: ev("removed"),
     create: rec("tabs.create", (o) => {
-      if (launchOnOpen && o.url.startsWith("tdownload://")) setTimeout(launchApp, 300);   // giả lập Windows mở app
+      if (launchOnOpen && o.url.includes("launch.html?u=tdownload")) setTimeout(launchApp, 300);   // Windows mở app
       return { id: 99 };
     }),
     get: async (id) => ({ id, url: "" }),
@@ -90,7 +91,8 @@ passed++;
 reset({ protocol: null });
 launchOnOpen = true;
 await menuLink("https://h.vn/b.zip");
-assert.equal(called("tabs.create")[0][1].url, "tdownload://open?minimized=1");
+assert.equal(called("tabs.create")[0][1].url,
+  "chrome-extension://td/launch.html?u=" + encodeURIComponent("tdownload://open?minimized=1"));
 assert.equal(called("tabs.create")[0][1].openerTabId, 7);
 assert.deepEqual(added.map((a) => a.url), ["https://h.vn/b.zip"]);
 assert.equal(called("download").length, 0);

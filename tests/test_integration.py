@@ -111,6 +111,19 @@ def test_sync_only_touches_enabled_options(regbase):
     assert I.autostart_command(root=root, key=run) == I.app_command("--minimized")
 
 
+def test_browser_link_kept_until_ui_ready(engine):
+    """Extension mở app rồi gửi link ngay: API nhận trước khi cửa sổ nối sự kiện → không được mất link."""
+    events = []
+    engine.ui_attached = True
+    engine.listeners.append(lambda k, p: events.append((k, p.get("url"))) if k == "browser_add" else None)
+    engine.call_sync(engine.handle_browser_add, {"url": "https://h.vn/a.zip"})
+    assert events == []
+    engine.call_sync(engine.ui_ready)
+    assert events == [("browser_add", "https://h.vn/a.zip")]
+    engine.call_sync(engine.handle_browser_add, {"url": "https://h.vn/b.zip"})
+    assert events[-1] == ("browser_add", "https://h.vn/b.zip")
+
+
 @pytest.mark.skipif(shutil.which("node") is None, reason="cần Node.js")
 def test_extension_falls_back_when_app_missing():
     """Chạy background.js thật với API chrome giả: menu chuột phải khi app tắt."""

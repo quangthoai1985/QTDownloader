@@ -10,8 +10,9 @@
 bắt link từ trình duyệt qua extension. Viết bằng **Python 3.14 + PySide6 + httpx**. Thiết kế engine:
 [docs/THIET_KE.md](docs/THIET_KE.md).
 
-Trạng thái: **v1.0.0 đã phát hành** (GitHub Release `v1.0.0`) — 32/32 test qua, extension đã thử trên Edge 155 thật, bản PyInstaller
-`dist\TDownload\TDownload.exe` (~90 MB) đã thử tải end-to-end. **Chưa thử với máy chủ thật trên Internet**
+Trạng thái: **v1.0.1 đã phát hành** (GitHub Release `v1.0.1`; 1.0.1 = extension dùng được khi app chưa chạy qua
+giao thức `tdownload://`) — 41/41 test qua, extension đã thử trên Edge 155 thật (cả giao thức đăng ký thật), bản
+PyInstaller `TDownload.exe` (~90 MB) đã thử tải end-to-end. **Chưa thử với máy chủ thật trên Internet**
 (Google Drive, Fshare, Mediafire, CDN lớn) — đây là việc ưu tiên số 1.
 
 ## 2. Quy tắc bắt buộc
@@ -29,7 +30,7 @@ Trạng thái: **v1.0.0 đã phát hành** (GitHub Release `v1.0.0`) — 32/32 t
 python -m pip install -r requirements.txt
 python -m tdownload                 # GUI (hoặc run.bat); --minimized để khởi động xuống khay
 python -m tdownload.cli URL -c 16   # headless
-python -m pytest -q tests           # ~65 giây, 40 test (có chạy node tests/ext_harness.mjs nếu có Node)
+python -m pytest -q tests           # ~70 giây, 41 test (có chạy node tests/ext_harness.mjs nếu có Node)
 python tests/server.py --port 8765  # máy chủ thử nghiệm để bấm thử trên GUI
 build.bat [thư_mục]                 # → <thư_mục mặc định dist>\TDownload\TDownload.exe
 python tools/package_release.py [--dist thư_mục]   # → release\*.zip + SHA256SUMS.txt
@@ -77,7 +78,7 @@ UI (PySide6, luồng chính) ──engine.call()──► core/engine.py (luồn
 | `ui/main_window.py` | Cửa sổ chính | Toolbar, cây phân loại, bảng (`table_model.py`), khay, clipboard, kéo-thả, nhập `.ef2` |
 | `ui/progress_dialog.py` | Cửa sổ tiến trình | `SegmentBar` tô màu theo worker sở hữu đoạn; xử lý "tải xong" nằm ở `MainWindow._on_completed` |
 | `ui/dialogs.py` | Hộp thoại | `vi_buttons()`/`ask()` thay chữ nút chuẩn của Qt bằng tiếng Việt |
-| `extension/` | MV3 (Chrome/Edge/Cốc Cốc) | `downloads.onCreated` → ping app → cancel+erase → POST. Cookie lấy **theo từng link** (`chrome.cookies.getAll({url})`). `webRequest.onHeadersReceived` dò HLS/video → `storage.session` theo tab. App tắt: bắt tự động thì để trình duyệt tải; menu/popup gọi `ensureApp` → mở `tdownload://` ở **tab tạm** (không điều hướng tab người dùng), chờ ping 10 s (15 s nếu app từng báo `protocol:true`; `protocol:false` thì bỏ qua) → không được thì `downloads.download` + `warn()` (huy hiệu, tiêu đề, `notifications`) |
+| `extension/` | MV3 (Chrome/Edge/Cốc Cốc) | `downloads.onCreated` → ping app → cancel+erase → POST. Cookie lấy **theo từng link** (`chrome.cookies.getAll({url})`). `webRequest.onHeadersReceived` dò HLS/video → `storage.session` theo tab. App tắt: bắt tự động thì để trình duyệt tải; menu/popup gọi `ensureApp` → mở **tab tạm** `launch.html` tự điều hướng tới `tdownload://` (không đụng tab người dùng; origin của extension → hộp thoại có ô "Luôn cho phép"), chờ ping 10 s (15 s nếu app từng báo `protocol:true`; `protocol:false` thì bỏ qua) → không được thì `downloads.download` + `warn()` (huy hiệu, tiêu đề, `notifications`) |
 
 Trạng thái mục tải: `queued → connecting → downloading → (merging|verifying) → completed | error | paused`.
 Tệp đang tải tên `<tên>.tdpart` cạnh tệp đích; xong thì `os.replace`.
@@ -126,9 +127,15 @@ Tệp đang tải tên `<tên>.tdpart` cạnh tệp đích; xong thì `os.replac
 | Extension không mở được app khi app tắt | HTTP localhost không khởi chạy được tiến trình; native messaging cần registry | Giao thức `tdownload://` do người dùng tự bật trong Tuỳ chọn (HKCU, gỡ được). Giao thức **chưa đăng ký** thì Chrome/Edge im lặng (tab `about:blank`, không hộp thoại) → extension nhớ `protocol` từ `/api/ping` để khỏi chờ vô ích |
 | Lệnh `pythonw -m tdownload` trong registry không chạy | Trình duyệt gọi lệnh với thư mục làm việc bất kỳ → không thấy gói `tdownload` | Chạy từ mã nguồn thì lệnh là `pythonw "<repo>\run_tdownload.py"` (đường dẫn tuyệt đối) |
 | App từ mã nguồn mất 3–4 giây mới mở API | Nhập PySide6 + khởi động engine | Extension chờ ping ≥ 10 giây sau khi mở `tdownload://` |
-| Test không được ghi registry thật | Quy tắc dự án | Hàm `integration.*` nhận `root`/đường dẫn khoá; test dùng `HKCU\Software\TDownloadTest\<uuid>` rồi xoá cả cây. Khi thử tay **không** bật 2 tuỳ chọn trên máy người dùng |
+| Test không được ghi registry thật | Quy tắc dự án | Hàm `integration.*` nhận `root`/đường dẫn khoá; test dùng `HKCU\Software\TDownloadTest\<uuid>` rồi xoá cả cây. Khi thử tay **không** bật 2 tuỳ chọn trên máy người dùng nếu họ chưa cho phép |
 | Heredoc qua Bash tool làm mất một nửa dấu `\` | Công cụ xử lý chuỗi trước khi tới shell | Sửa tệp có `\` (regex JS, đường dẫn Windows, `\n` trong f-string) bằng công cụ Edit, không chèn qua heredoc |
-| Thử Edge làm rơi tệp `Unconfirmed *.crdownload` vào `Downloads` thật | Hồ sơ tạm vẫn lưu vào thư mục tải mặc định; Edge giữ tải qua http chờ xác nhận | Sau khi thử: `chrome.downloads.cancel` + `erase` từ trang extension (Edge tự xoá tệp tạm) |
+| Thử Edge làm rơi tệp `Unconfirmed *.crdownload` vào `Downloads` thật | Hồ sơ tạm vẫn lưu vào thư mục tải mặc định; Edge giữ tải qua http chờ xác nhận | Soạn sẵn `<hồ sơ>\Default\Preferences` **trước lần chạy đầu** với `download.default_directory` trỏ vào scratchpad; lỡ rồi thì `chrome.downloads.cancel` + `erase` |
+| Hộp thoại "Mở TDownload?" không có ô "Luôn cho phép" | `tabs.create({url:"tdownload://…"})` là điều hướng không có origin khởi tạo | Mở trang `launch.html` của extension rồi trang đó `location.href = "tdownload://…"` → hộp thoại có ô "Always allow chrome-extension://…" (đã kiểm Edge 155) |
+| Link gửi ngay khi app vừa mở bị mất | `engine.start()` mở API trước khi `MainWindow` nối `bridge.event` | Engine giữ sự kiện trong `_ui_backlog` khi `ui_attached` cho tới `engine.ui_ready()` (gọi cuối `ui/app.py`) |
+| Mở lại hồ sơ Edge tạm thì extension `--load-extension` bị tắt (lý do `1<<24`) | Sửa `Preferences` từ ngoài khi hồ sơ đã chạy → Chromium coi là bị can thiệp | Mỗi lần cần tuỳ chọn khác thì tạo hồ sơ tạm mới, soạn `Preferences` trước lần chạy đầu (kể cả `protocol_handler.allowed_origin_protocol_pairs` để giả lập "Luôn cho phép") |
+| Hồ sơ Edge tạm bị tự đăng nhập/đồng bộ tài khoản Windows (xuất hiện extension của người dùng) | Edge implicit sign-in | Luôn thêm `--disable-sync`; xoá hồ sơ tạm sau khi thử, không đọc dữ liệu trong đó |
+| Thử giao thức thật mà không đụng app thật | Lệnh trong registry không mang theo `TDOWNLOAD_DATA` | (Được người dùng cho phép) đăng ký tạm với lệnh trỏ vào script đặt `TDOWNLOAD_DATA` tạm rồi gọi `main()`; thử xong `integration.unregister_protocol()` |
+| Windows truyền `tdownload://open/?minimized=1` | ShellExecute chuẩn hoá URL, chèn `/` trước `?` | `parse_protocol_url` bỏ `/` thừa ở tên hành động |
 
 Giới hạn **cố hữu** (chấp nhận, không phải bug):
 - Không bắt được link từ ứng dụng ngoài trình duyệt (cần driver mạng ký số — không làm).
@@ -141,9 +148,8 @@ Giới hạn **cố hữu** (chấp nhận, không phải bug):
    chữ ký hết hạn). Ghi tỉ lệ thành công, so tốc độ với IDM; sửa lỗi phát sinh.
 2. **Bảo mật API cục bộ**: hiện mọi tiến trình trên máy đều POST được `/api/add`. Thêm token ghép đôi
    (`X-TDownload-Token`) giữa app và extension.
-   - Thử giao thức `tdownload://` **đã đăng ký thật** (cần người dùng cho phép bật tuỳ chọn): hộp thoại "Mở
-     TDownload?" của Chrome/Edge/Cốc Cốc, có ô "Luôn cho phép" không (mở từ `tabs.create` là điều hướng do trình
-     duyệt khởi tạo, có thể không có ô này), 15 giây chờ có đủ không.
+   - Bấm thử menu chuột phải thật khi app tắt trên Chrome/Cốc Cốc (Edge đã thử qua cùng hàm `sendLink`; CDP không
+     bấm được menu ngữ cảnh).
 3. Quét Windows Defender sau khi tải; tự giải nén; phát hiện trùng lặp; bản portable.
 4. Tự làm mới link hết hạn qua extension; chế độ nhường mạng (đo RTT); hồ sơ tốc độ theo giờ.
 5. DASH (`.mpd`) + ghép audio/video bằng ffmpeg; tích hợp yt-dlp (tuỳ chọn).
