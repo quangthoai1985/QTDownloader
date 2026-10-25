@@ -53,12 +53,15 @@ Mỗi lần làm việc, Agent thêm mục mới **ở trên cùng** (ngày, vi�
   - mở bản mới lần đầu → "Đã cập nhật QT Downloader từ x lên y"; bộ cài đã dùng được dọn;
   - bản giải nén (zip) chỉ được báo, nút "Tải bản mới" tải gói zip như trước;
   - tuỳ chọn mới **Tự tải ngầm bản mới…** (`auto_download_updates`, mặc định bật).
+- Workflow **Phát hành** (`.github/workflows/release.yml`): đẩy tag `vX.Y.Z` → build, test, đóng gói, cài/gỡ thử
+  bộ cài trên Windows rồi tạo GitHub Release kèm mọi tệp và ghi chú lấy từ CHANGELOG.
 - Test mới: `tests/test_installer.py` (đối chiếu `installer.iss` với mã), `tests/test_rename_migration.py`, thêm kịch
   bản tải ngầm / sai SHA-256 / gói tên cũ trong `tests/test_updater.py`, gỡ khoá cũ trong `tests/test_integration.py`.
 
 ### Việc còn dở
-- Chưa biên dịch và cài thử bộ cài trên Windows thật (phiên làm việc này chạy trên Linux, không có ISCC/PyInstaller
-  cho Windows): cần `build.bat` → `python tools/package_release.py` → cài thử vào máy ảo/thư mục tạm → gỡ.
+- Bản phát hành được build bằng GitHub Actions (`.github/workflows/release.yml`, máy Windows): chạy test, `build.bat`,
+  `tools/package_release.py`, cài thử im lặng → chạy app đã cài (kiểm `/api/ping`) → gỡ im lặng, rồi mới tạo Release.
+  Chưa thử trên máy người dùng thật: cập nhật từ 1.0.3 lên 1.1.0 (chuyển dữ liệu, extension cũ).
 - Đổi tên repo trên GitHub (Settings → Repository name → `QTDownloader`); GitHub tự chuyển hướng tên cũ nên bản
   ≤ 1.0.3 vẫn thấy bản phát hành mới.
 

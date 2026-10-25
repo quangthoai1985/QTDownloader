@@ -49,8 +49,9 @@ python tools/package_release.py [--dist thư_mục] [--no-installer]   # → rel
    → cài thử bộ cài vào thư mục tạm (`/VERYSILENT /DIR="…"`) rồi gỡ (`unins000.exe /VERYSILENT`). Máy đã có bản cài
    thật (khoá `HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\{60877C1B-…}_is1`) thì **không** cài thử
    (cùng AppId → gỡ bản thử xoá luôn bản thật) — thử trên máy ảo.
-3. Commit, `git tag -a vX.Y.Z`, push tag, `gh release create vX.Y.Z release/* --notes-file …` (đính kèm **tất cả**
-   tệp trong `release\`). Tên tệp phải giữ đúng: `QTDownloader-<ver>-setup.exe` (bản đã cài tự tải ngầm & cài),
+3. Commit, `git tag -a vX.Y.Z`, push tag → workflow `.github/workflows/release.yml` (Windows) tự chạy test, build,
+   đóng gói, cài/gỡ thử bộ cài rồi tạo Release (ghi chú lấy từ mục CHANGELOG). Làm tay thì
+   `gh release create vX.Y.Z release/* --notes-file …` (đính kèm **tất cả** tệp trong `release\`). Tên tệp phải giữ đúng: `QTDownloader-<ver>-setup.exe` (bản đã cài tự tải ngầm & cài),
    `QTDownloader-<ver>-win64.zip`, bản sao `TDownload-<ver>-win64.zip` (bản ≤ 1.0.3 chỉ nhận tên này) và
    `SHA256SUMS.txt` (thiếu SHA-256 thì bản cài **không** tự cài). Tag phải dạng `vX.Y.Z` (không dùng pre-release cho
    bản chính: API `releases/latest` bỏ qua pre-release). `INNO_APP_ID` / `AppId` **không bao giờ đổi**.
