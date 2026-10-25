@@ -10,10 +10,11 @@
 duyệt qua extension. Viết bằng **Python 3.14 + PySide6 + httpx**. **Mã nguồn mở, giấy phép MIT**; nhận đóng góp từ
 mọi người ([CONTRIBUTING.md](CONTRIBUTING.md)). Thiết kế engine: [docs/THIET_KE.md](docs/THIET_KE.md).
 
-Trạng thái: **v1.1.0 đang chờ phát hành** — đổi tên **TDownload → QT Downloader** (repo `quangthoai1985/QTDownloader`,
-trước là `TDownload`), có **bộ cài Inno Setup** (gỡ được trong Cài đặt › Ứng dụng) và **tự cập nhật như QT PDF Pro**.
-Bản đã phát hành gần nhất: v1.0.3 (còn tên TDownload). Repo GitHub đã được tạo lại ngày 2026-10-19 với lịch sử sạch
-(đừng tham chiếu mã commit cũ). Bộ cài **chưa được biên dịch/cài thử trên Windows thật** — làm trước khi phát hành.
+Trạng thái: **v1.1.0 đã phát hành** (2026-10-25, build bằng GitHub Actions) — đổi tên **TDownload → QT Downloader**
+(repo `quangthoai1985/QTDownloader`, trước là `TDownload`), **bộ cài Inno Setup** (gỡ được trong Cài đặt › Ứng dụng),
+**tự cập nhật như QT PDF Pro**. Bản 1.1.0 **chưa ký số** → Windows 11 bật Smart App Control chặn hẳn bộ cài; đang
+chuẩn bị ký số miễn phí qua **SignPath Foundation** (`.signpath/README.md`, `docs/CODE_SIGNING.md`) — chờ người dùng
+nộp đơn và cấu hình. Repo GitHub đã được tạo lại ngày 2026-10-19 với lịch sử sạch (đừng tham chiếu mã commit cũ).
 68 test qua (5 bỏ qua ngoài Windows), extension đã thử trên Edge 155 thật
 (cả giao thức đăng ký thật), bản PyInstaller `QTDownloader.exe` (~86 MB) đã thử tải end-to-end. **Chưa thử với máy chủ thật trên Internet**
 (Google Drive, Fshare, Mediafire, CDN lớn) — đây là việc ưu tiên số 1.
@@ -49,7 +50,7 @@ python tools/package_release.py [--dist thư_mục] [--no-installer]   # → rel
    → cài thử bộ cài vào thư mục tạm (`/VERYSILENT /DIR="…"`) rồi gỡ (`unins000.exe /VERYSILENT`). Máy đã có bản cài
    thật (khoá `HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\{60877C1B-…}_is1`) thì **không** cài thử
    (cùng AppId → gỡ bản thử xoá luôn bản thật) — thử trên máy ảo.
-3. Commit, `git tag -a vX.Y.Z`, push tag → workflow `.github/workflows/release.yml` (Windows) tự chạy test, build,
+3. Commit, `git tag -a vX.Y.Z`, push tag (hoặc Actions → Phát hành → Run workflow, bỏ chọn `publish` để chạy thử) → workflow `.github/workflows/release.yml` (Windows) tự chạy test, build,
    đóng gói, cài/gỡ thử bộ cài rồi tạo Release (ghi chú lấy từ mục CHANGELOG). Làm tay thì
    `gh release create vX.Y.Z release/* --notes-file …` (đính kèm **tất cả** tệp trong `release\`). Tên tệp phải giữ đúng: `QTDownloader-<ver>-setup.exe` (bản đã cài tự tải ngầm & cài),
    `QTDownloader-<ver>-win64.zip`, bản sao `TDownload-<ver>-win64.zip` (bản ≤ 1.0.3 chỉ nhận tên này) và
@@ -152,6 +153,8 @@ Tệp đang tải tên `<tên>.tdpart` cạnh tệp đích; xong thì `os.replac
 | Thử giao thức thật mà không đụng app thật | Lệnh trong registry không mang theo `QTDOWNLOADER_DATA` | (Được người dùng cho phép) đăng ký tạm với lệnh trỏ vào script đặt `QTDOWNLOADER_DATA` tạm rồi gọi `main()`; thử xong `integration.unregister_protocol()` |
 | Windows truyền `qtdownloader://open/?minimized=1` | ShellExecute chuẩn hoá URL, chèn `/` trước `?` | `parse_protocol_url` bỏ `/` thừa ở tên hành động |
 | Đổi tên bằng `sed` biến `QTDownloader` thành `QQT Downloaderer` | Tên mới `QTDownloader` **chứa** chuỗi cũ `TDownload` → thay lần hai ăn vào kết quả lần một | Thay tên kỹ thuật trước, rồi kiểm `git grep "QQT\|Downloaderer"`; tên hiển thị "QT Downloader" và tên kỹ thuật "QTDownloader" khác nhau — đừng thay chung |
+| Windows 11 chặn bộ cài, không có "Run anyway" | **Smart App Control** (khác SmartScreen) chặn mọi tệp chưa ký + chưa có uy tín | Ký số Authenticode (RSA) qua SignPath Foundation: `QTDownloader.exe` trước khi đóng gói, rồi bộ cài. Người dùng tạm thời: tắt Smart App Control (bật lại được từ bản cập nhật 4/2026) |
+| Không đẩy được tag từ phiên Agent đám mây | Proxy git chặn push tag | Chạy tay workflow **Phát hành** (workflow_dispatch, nhập tag) — `gh release create` tự tạo tag ở `GITHUB_SHA` |
 | Bộ cài không chạy được khi app còn giữ mutex/tệp | `AppMutex` + `CloseApplications`: bộ cài im lặng gặp app đang mở sẽ hỏi/huỷ | Không chạy bộ cài từ trong app đang sống: lưu lệnh vào `MainWindow.run_after_exit`, `ui/app.py` chạy sau khi engine tắt, QLocalServer đóng và `CloseHandle` mutex |
 | App chạy dưới khay mà trình duyệt vẫn hiện hộp thoại/khung tải xuống cạnh hộp thoại QT Downloader | `downloads.onCreated` chạy song song với UI tải của trình duyệt; ping + cancel tới muộn | Bắt ở `downloads.onDeterminingFilename` (listener `return true`, trình duyệt giữ lượt tải chờ `suggest()`); nhận thì cancel+erase và **không** gọi `suggest`. Mọi nhánh không nhận **phải** gọi `suggest()`, kể cả khi lỗi, nếu không lượt tải treo |
 
@@ -171,8 +174,9 @@ Giới hạn **cố hữu** (chấp nhận, không phải bug):
 3. Quét Windows Defender sau khi tải; tự giải nén; phát hiện trùng lặp; bản portable.
 4. Tự làm mới link hết hạn qua extension; chế độ nhường mạng (đo RTT); hồ sơ tốc độ theo giờ.
 5. DASH (`.mpd`) + ghép audio/video bằng ffmpeg; tích hợp yt-dlp (tuỳ chọn).
-6. ~~Bộ cài Inno Setup + tự cài bản mới~~ (1.1.0 — còn biên dịch & cài thử trên Windows thật). Ký Authenticode;
-   extension cho Firefox.
+6. ~~Bộ cài Inno Setup + tự cài bản mới~~ (1.1.0). **Ký Authenticode qua SignPath Foundation**: mã & workflow đã sẵn
+   sàng, chờ duyệt đơn + cấu hình (`.signpath/README.md`); sau đó cân nhắc ký cả `unins000.exe` (Inno `SignTool`).
+   Extension cho Firefox.
    Ký số: máy có `signtool` (SDK 10.0.26100) nhưng **chưa có chứng thư Code Signing**. Dự án đã MIT → có thể xin
    SignPath Foundation (miễn phí, cần build từ CI) hoặc Certum Open Source Code Signing. Token chữ ký số Viettel
    (thuế/hoá đơn) thường không có EKU Code Signing; gốc "Vietnam National Root CA" chỉ được tin trên máy đã cài phần

@@ -56,7 +56,12 @@ Bản cài tự cập nhật: mỗi lần mở app sẽ hỏi GitHub, có bản 
 **Tuỳ chọn → Chung**.
 
 Bản giải nén (portable): `QTDownloader-<phiên bản>-win64.zip`, giải nén rồi chạy `QTDownloader\QTDownloader.exe` —
-bản này chỉ được báo có bản mới. Chưa ký số nên Windows SmartScreen có thể cảnh báo → *More info → Run anyway*.
+bản này chỉ được báo có bản mới.
+
+**Chữ ký số.** Dự án đang đăng ký ký số miễn phí qua SignPath Foundation ([chính sách ký số](docs/CODE_SIGNING.md)).
+Bản chưa ký (≤ 1.1.0): máy Windows 11 bật **Smart App Control** sẽ chặn hẳn bộ cài, không có nút chạy tiếp — tạm tắt
+Smart App Control (Bảo mật Windows → Kiểm soát ứng dụng & trình duyệt) hoặc chờ bản có chữ ký; máy chỉ có SmartScreen
+thì bấm *More info → Run anyway*.
 
 Tự build: `build.bat` → `dist\QTDownloader\QTDownloader.exe`; đóng gói phát hành kèm bộ cài (cần
 [Inno Setup 6](https://jrsoftware.org/isinfo.php)): `python tools/package_release.py` → `release\`.
@@ -131,3 +136,12 @@ mật xin báo riêng theo [SECURITY.md](SECURITY.md).
 
 QT Downloader phát hành theo giấy phép [MIT](LICENSE). Bản đóng gói `.exe` có kèm các thư viện bên thứ ba (Qt/PySide6
 theo LGPL-3.0, Python, httpx…) — xem [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+## Ký số & quyền riêng tư
+
+Free code signing provided by [SignPath.io](https://about.signpath.io/), certificate by
+[SignPath Foundation](https://signpath.org/). Chi tiết: [chính sách ký số](docs/CODE_SIGNING.md).
+*(Đang chờ SignPath Foundation duyệt — các bản ≤ 1.1.0 chưa được ký.)*
+
+QT Downloader không thu thập dữ liệu: chỉ kết nối tới máy chủ của các tệp bạn tải và GitHub (kiểm tra bản mới, tắt
+được) — xem [chính sách quyền riêng tư](docs/CODE_SIGNING.md#quyền-riêng-tư--privacy-policy).

@@ -1,6 +1,7 @@
 """Đóng gói các tệp đính kèm GitHub Release vào thư mục release/.
 
     python tools/package_release.py [--dist THƯ_MỤC] [--no-installer]   (chạy sau build.bat; mặc định dist)
+    python tools/package_release.py --sums-only    ghi lại SHA256SUMS.txt (sau khi ký số bộ cài trong CI)
 
 Tạo:
   QTDownloader-<ver>-setup.exe          bộ cài Inno Setup (installer.iss): cài theo người dùng, không cần UAC,
@@ -82,13 +83,28 @@ def sha256_of(path: str) -> str:
     return h.hexdigest()
 
 
+def write_sums(out_dir: str) -> None:
+    """SHA256SUMS.txt cho mọi tệp trong release/ — trình cập nhật dựa vào tệp này để kiểm toàn vẹn."""
+    names = sorted(n for n in os.listdir(out_dir) if n != "SHA256SUMS.txt")
+    lines = [f"{sha256_of(os.path.join(out_dir, n))}  {n}" for n in names]
+    for n in names:
+        print(f"{n}  {os.path.getsize(os.path.join(out_dir, n)) / 1048576:.1f} MB")
+    with open(os.path.join(out_dir, "SHA256SUMS.txt"), "w", encoding="ascii", newline="\n") as f:
+        f.write("\n".join(lines) + "\n")
+    print("\n".join(lines))
+
+
 def main() -> None:
     for s in (sys.stdout, sys.stderr):
         s.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser()
     ap.add_argument("--dist", default=os.path.join(ROOT, "dist"), help="thư mục distpath đã dùng khi build")
     ap.add_argument("--no-installer", action="store_true", help="không biên dịch bộ cài (máy chưa có Inno Setup)")
+    ap.add_argument("--sums-only", action="store_true", help="chỉ ghi lại SHA256SUMS.txt cho các tệp trong release/")
     args = ap.parse_args()
+    if args.sums_only:
+        write_sums(os.path.join(ROOT, "release"))
+        return
     dist = os.path.join(os.path.abspath(args.dist), APP_ID)
     ext = os.path.join(ROOT, "extension")
     out_dir = os.path.join(ROOT, "release")
@@ -109,17 +125,9 @@ def main() -> None:
     zip_dir(dist, app_zip, APP_ID, notice_files())
     shutil.copyfile(app_zip, legacy_zip)
     zip_dir(ext, ext_zip, "", notice_files()[:1])
-    outputs = [app_zip, legacy_zip, ext_zip]
     if not args.no_installer:
-        outputs.insert(0, build_installer(dist, out_dir))
-
-    lines = []
-    for path in outputs:
-        lines.append(f"{sha256_of(path)}  {os.path.basename(path)}")
-        print(f"{os.path.basename(path)}  {os.path.getsize(path) / 1048576:.1f} MB")
-    with open(os.path.join(out_dir, "SHA256SUMS.txt"), "w", encoding="ascii", newline="\n") as f:
-        f.write("\n".join(lines) + "\n")
-    print("\n".join(lines))
+        build_installer(dist, out_dir)
+    write_sums(out_dir)
 
 
 if __name__ == "__main__":

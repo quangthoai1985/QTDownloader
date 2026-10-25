@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SignPath: ký QTDownloader.exe (bootloader PyInstaller của dự án) TRƯỚC khi đóng gói zip và biên dịch bộ cài.
+     Artifact gửi lên = 1 tệp QTDownloader.exe (actions/upload-artifact nén thành zip). Thư viện bên thứ ba
+     (Qt, Python…) KHÔNG được ký bằng chứng thư của dự án. -->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <zip-file>
+    <pe-file path="QTDownloader.exe" product-name="QT Downloader" original-filename="QTDownloader.exe">
+      <authenticode-sign/>
+    </pe-file>
+  </zip-file>
+</artifact-configuration>

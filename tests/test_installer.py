@@ -93,3 +93,37 @@ def test_package_release_names():
     import package_release
     assert package_release.LEGACY_ZIP_PREFIX == "TDownload"
     assert re.match(r"^TDownload-.+-win64\.zip$", "TDownload-1.1.0-win64.zip")   # regex của bản ≤ 1.0.3
+
+
+def test_signpath_configuration_matches_build():
+    """SignPath chỉ ký khi siêu dữ liệu tệp khớp cấu hình → phải trùng tên/ProductName mà build sinh ra."""
+    import xml.dom.minidom
+    sp = os.path.join(ROOT, ".signpath")
+    app = xml.dom.minidom.parse(os.path.join(sp, "artifact-configuration-app.xml"))
+    pe = app.getElementsByTagName("pe-file")[0]
+    assert pe.getAttribute("path") == pe.getAttribute("original-filename") == f"{APP_ID}.exe"
+    assert pe.getAttribute("product-name") == APP_NAME
+    inst = xml.dom.minidom.parse(os.path.join(sp, "artifact-configuration-installer.xml"))
+    pe = inst.getElementsByTagName("pe-file")[0]
+    assert pe.getAttribute("path") == f"{APP_ID}-${{version}}-setup.exe"
+    assert pe.getAttribute("product-name") == APP_NAME
+    assert "VersionInfoProductName={#AppName}" in iss()
+    with open(os.path.join(ROOT, "tools", "make_version_file.py"), encoding="utf-8") as f:
+        src = f.read()
+    assert "StringStruct('ProductName', '{app}')" in src and "StringStruct('OriginalFilename', '{exe}.exe')" in src
+    with open(os.path.join(ROOT, ".github", "workflows", "release.yml"), encoding="utf-8") as f:
+        wf = f.read()
+    for slug in ("app", "installer"):           # tên cấu hình tạo trên SignPath phải trùng các slug này
+        assert f"artifact-configuration-slug: {slug}" in wf
+
+
+def test_signing_policy_published():
+    """SignPath Foundation yêu cầu công bố dòng ghi công, vai trò và chính sách quyền riêng tư."""
+    attribution = "Free code signing provided by [SignPath.io]"
+    with open(os.path.join(ROOT, "docs", "CODE_SIGNING.md"), encoding="utf-8") as f:
+        policy = f.read()
+    with open(os.path.join(ROOT, "README.md"), encoding="utf-8") as f:
+        readme = f.read()
+    assert attribution in policy and attribution in readme and "docs/CODE_SIGNING.md" in readme
+    for part in ("Team roles", "Privacy policy", "will not transfer any information"):
+        assert part in policy

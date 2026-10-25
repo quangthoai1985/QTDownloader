@@ -1,0 +1,7 @@
+# Thay đổi quy trình phát hành / ký số phải được người duyệt yêu cầu ký số xem xét (docs/CODE_SIGNING.md)
+/.signpath/        @quangthoai1985
+/.github/          @quangthoai1985
+/installer.iss     @quangthoai1985
+/installer/        @quangthoai1985
+/tools/            @quangthoai1985
+/build.bat         @quangthoai1985

@@ -1,5 +1,9 @@
 # Phát hành: đẩy tag vX.Y.Z (hoặc chạy tay) → build trên Windows, chạy test, đóng gói zip + bộ cài,
 # cài thử / gỡ thử bộ cài, rồi tạo GitHub Release kèm mọi tệp trong release\ (xem CLAUDE.md §3).
+#
+# Ký số miễn phí qua SignPath Foundation (docs/CODE_SIGNING.md): chỉ bật khi repo có biến
+# SIGNPATH_ORGANIZATION_ID, SIGNPATH_PROJECT_SLUG, SIGNPATH_SIGNING_POLICY_SLUG (Settings › Variables) và secret
+# SIGNPATH_API_TOKEN. Ký 2 lần: QTDownloader.exe (trước khi đóng gói) rồi bộ cài; mỗi lần chờ người duyệt trên SignPath.
 name: Phát hành
 
 on:
@@ -10,6 +14,10 @@ on:
       tag:
         description: "Tag phát hành (vd v1.1.0) — phải trùng __version__"
         required: true
+      publish:
+        description: "Tạo GitHub Release (bỏ chọn = chạy thử: build, ký, cài thử nhưng không xuất bản)"
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -17,10 +25,12 @@ permissions:
 jobs:
   release:
     runs-on: windows-latest
-    timeout-minutes: 60
+    timeout-minutes: 180   # ký số chờ người duyệt trên SignPath (tối đa 1 giờ mỗi lần)
     env:
       PYTHONUTF8: "1"
       TAG: ${{ github.event.inputs.tag || github.ref_name }}
+      PUBLISH: ${{ github.event_name == 'push' || github.event.inputs.publish == 'true' }}
+      SIGNING: ${{ vars.SIGNPATH_ORGANIZATION_ID != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -49,6 +59,47 @@ jobs:
         shell: cmd
         run: build.bat
 
+      - name: Liệt kê tệp chương trình chưa ký số (tham khảo)
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem dist\QTDownloader -Recurse -Include *.exe,*.dll,*.pyd
+          $sig = $files | Get-AuthenticodeSignature
+          $sig | Group-Object Status | Format-Table Name, Count
+          $sig | Where-Object Status -ne Valid | ForEach-Object { $_.Path.Substring((Resolve-Path dist).Path.Length + 1) } | Select-Object -First 300
+
+      - name: "Ký số: tải QTDownloader.exe lên"
+        if: env.SIGNING == 'true'
+        id: upload-app
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-app-exe
+          path: dist/QTDownloader/QTDownloader.exe
+          if-no-files-found: error
+
+      - name: "Ký số: SignPath ký QTDownloader.exe (chờ duyệt)"
+        if: env.SIGNING == 'true'
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: app
+          github-artifact-id: ${{ steps.upload-app.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: signed-app
+
+      - name: "Ký số: thay QTDownloader.exe bằng bản đã ký"
+        if: env.SIGNING == 'true'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $s = Get-AuthenticodeSignature signed-app\QTDownloader.exe
+          if ($s.Status -ne "Valid") { throw "QTDownloader.exe chưa ký hợp lệ: $($s.Status) $($s.StatusMessage)" }
+          Write-Host "Đã ký bởi: $($s.SignerCertificate.Subject)"
+          Copy-Item signed-app\QTDownloader.exe dist\QTDownloader\QTDownloader.exe -Force
+
       - name: Cài Inno Setup (nếu máy chưa có)
         shell: pwsh
         run: |
@@ -56,6 +107,43 @@ jobs:
 
       - name: Đóng gói zip + bộ cài
         run: python tools/package_release.py
+
+      - name: "Ký số: tải bộ cài lên"
+        if: env.SIGNING == 'true'
+        id: upload-setup
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-setup
+          path: release/QTDownloader-${{ env.VERSION }}-setup.exe
+          if-no-files-found: error
+
+      - name: "Ký số: SignPath ký bộ cài (chờ duyệt)"
+        if: env.SIGNING == 'true'
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: installer
+          github-artifact-id: ${{ steps.upload-setup.outputs.artifact-id }}
+          parameters: |
+            version: "${{ env.VERSION }}"
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: signed-setup
+
+      - name: "Ký số: thay bộ cài bằng bản đã ký, ghi lại SHA256SUMS"
+        if: env.SIGNING == 'true'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $name = "QTDownloader-$env:VERSION-setup.exe"
+          $s = Get-AuthenticodeSignature "signed-setup\$name"
+          if ($s.Status -ne "Valid") { throw "Bộ cài chưa ký hợp lệ: $($s.Status) $($s.StatusMessage)" }
+          Write-Host "Đã ký bởi: $($s.SignerCertificate.Subject)"
+          Copy-Item "signed-setup\$name" "release\$name" -Force
+          python tools/package_release.py --sums-only
 
       - name: Cài thử, chạy thử, gỡ thử bộ cài
         shell: pwsh
@@ -68,6 +156,12 @@ jobs:
           Start-Process $setup -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/DIR=`"$dir`"" -Wait
           if (-not (Test-Path "$dir\QTDownloader.exe")) { throw "Không thấy QTDownloader.exe sau khi cài" }
           if (-not (Test-Path "$dir\unins000.exe")) { throw "Không có trình gỡ cài đặt" }
+          if ($env:SIGNING -eq "true") {
+            foreach ($f in @($setup.Path, "$dir\QTDownloader.exe")) {
+              $s = Get-AuthenticodeSignature $f
+              if ($s.Status -ne "Valid") { throw "$f chưa ký hợp lệ: $($s.Status)" }
+            }
+          }
           $reg = Get-ItemProperty $key
           if ($reg.DisplayName -ne "QT Downloader" -or $reg.DisplayVersion -ne $env:VERSION) { throw "Mục gỡ cài đặt sai: $($reg.DisplayName) $($reg.DisplayVersion)" }
           # chạy bản đã cài với dữ liệu tạm, chờ API cục bộ trả lời
@@ -96,6 +190,7 @@ jobs:
         run: |
           import os, re
           ver = os.environ["VERSION"]
+          signed = os.environ.get("SIGNING") == "true"
           text = open("CHANGELOG.md", encoding="utf-8").read()
           m = re.search(rf"^## \[{re.escape(ver)}\].*?$\n(.*?)(?=^## \[)", text, re.M | re.S)
           body = (m.group(1).strip() if m else f"QT Downloader {ver}")
@@ -104,12 +199,31 @@ jobs:
                    "- `QTDownloader-extension-%s.zip` — extension Chrome/Edge/Cốc Cốc.\n"
                    "- `TDownload-%s-win64.zip` — bản sao cho trình cập nhật của TDownload ≤ 1.0.3.\n"
                    "- `SHA256SUMS.txt` — mã SHA-256 của các tệp trên.\n" % (ver, ver, ver, ver))
+          if signed:
+              body += ("\nBộ cài và `QTDownloader.exe` được ký số. Free code signing provided by "
+                       "[SignPath.io](https://about.signpath.io/), certificate by "
+                       "[SignPath Foundation](https://signpath.org/).\n")
+          else:
+              body += ("\n> **Bản này chưa ký số.** Windows 11 bật *Smart App Control* sẽ chặn hẳn bộ cài (không có nút chạy "
+                       "tiếp) — tạm tắt Smart App Control hoặc chờ bản có chữ ký. Máy chỉ có SmartScreen: *More info → Run "
+                       "anyway*.\n")
           open("release-notes.md", "w", encoding="utf-8").write(body)
 
       - name: Tạo GitHub Release
+        if: env.PUBLISH == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         shell: pwsh
         run: |
           Get-ChildItem release | Format-Table Name, Length
           gh release create $env:TAG (Get-ChildItem release).FullName --title "QT Downloader $env:VERSION" --notes-file release-notes.md --target $env:GITHUB_SHA
+
+      - name: Lưu bản chạy thử (không xuất bản)
+        if: env.PUBLISH != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-dry-run
+          path: |
+            release/
+            release-notes.md
+          retention-days: 7

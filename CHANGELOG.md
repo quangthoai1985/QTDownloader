@@ -5,6 +5,17 @@ Mỗi lần làm việc, Agent thêm mục mới **ở trên cùng** (ngày, vi�
 
 ## [Chưa phát hành]
 
+### Thêm
+- **Chuẩn bị ký số miễn phí qua SignPath Foundation** (Windows 11 bật Smart App Control chặn hẳn bộ cài chưa ký,
+  không có nút "Run anyway"): `.signpath/` (2 artifact configuration: `app` ký `QTDownloader.exe` trước khi đóng gói,
+  `installer` ký bộ cài; hướng dẫn cấu hình), workflow phát hành có bước ký tự bật khi repo có biến
+  `SIGNPATH_ORGANIZATION_ID` (+ `SIGNPATH_PROJECT_SLUG`, `SIGNPATH_SIGNING_POLICY_SLUG`, secret `SIGNPATH_API_TOKEN`),
+  kiểm chữ ký trước khi xuất bản, ghi lại `SHA256SUMS.txt` sau khi ký (`package_release.py --sums-only`), chế độ chạy
+  thử không xuất bản (`publish`), liệt kê tệp chương trình chưa ký trong gói. `docs/CODE_SIGNING.md` (chính sách ký
+  số, vai trò, quyền riêng tư — song ngữ), mục README, `.github/CODEOWNERS`. README/ghi chú phát hành nói đúng về
+  Smart App Control thay cho "More info → Run anyway".
+- Việc còn dở: người dùng nộp đơn tại signpath.org/apply, cấu hình SignPath + biến/secret của repo (`.signpath/README.md`).
+
 ### Việc còn dở / ưu tiên kế tiếp
 - Kiểm thử với máy chủ thật trên Internet (chưa làm lần nào).
 - Token ghép đôi cho API `127.0.0.1:41888`.
