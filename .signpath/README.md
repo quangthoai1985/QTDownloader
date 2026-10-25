@@ -1,5 +1,9 @@
 # Ký số qua SignPath Foundation (miễn phí cho dự án nguồn mở)
 
+Kiểm tra trên bản 1.1.0 (bước «Liệt kê tệp chương trình chưa ký số» của workflow): 112/113 tệp `.exe/.dll/.pyd`
+trong gói đã được chính tác giả ký (Python, Qt, Microsoft) — **chỉ `QTDownloader.exe` chưa ký**, cộng với bộ cài.
+Vì vậy chỉ cần ký 2 tệp này.
+
 Chính sách công khai: [docs/CODE_SIGNING.md](../docs/CODE_SIGNING.md). Workflow: [.github/workflows/release.yml](../.github/workflows/release.yml).
 
 ## 1. Đăng ký (một lần)
