@@ -149,4 +149,4 @@ def file_icon(ext: str) -> QIcon:
     global _provider
     if _provider is None:
         _provider = QFileIconProvider()
-    return _provider.icon(QFileInfo(f"C:/__tdownload__/x{ext}"))
+    return _provider.icon(QFileInfo(f"C:/__qtdownloader__/x{ext}"))

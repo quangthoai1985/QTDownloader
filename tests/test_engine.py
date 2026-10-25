@@ -9,7 +9,7 @@ import pytest
 
 import server as test_server
 from conftest import wait_done, wait_until
-from tdownload.core.engine import Engine
+from qtdownloader.core.engine import Engine
 
 MB = 1024 * 1024
 
@@ -221,7 +221,7 @@ def test_local_api_origin_rules(tmp_path, srv):
     try:
         base = f"http://127.0.0.1:{port}"
         with urllib.request.urlopen(base + "/api/ping") as r:
-            assert json.loads(r.read())["app"] == "TDownload"
+            assert json.loads(r.read())["app"] == "QT Downloader"
 
         def post(origin):
             body = json.dumps({"url": f"{srv}/file/api.bin?size=1000", "referer": "https://x"}).encode()

@@ -1,12 +1,12 @@
 ---
 name: Đề xuất tính năng
-about: Ý tưởng làm TDownload tốt hơn
+about: Ý tưởng làm QT Downloader tốt hơn
 title: "[Đề xuất] "
 labels: enhancement
 ---
 
 **Vấn đề bạn gặp**
-<!-- Bạn đang muốn làm gì mà TDownload chưa đáp ứng? -->
+<!-- Bạn đang muốn làm gì mà QT Downloader chưa đáp ứng? -->
 
 **Giải pháp mong muốn**
 

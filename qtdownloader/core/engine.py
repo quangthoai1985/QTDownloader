@@ -24,15 +24,17 @@ from . import categories
 from . import models as M
 from .limiter import RateLimiter
 from .probe import DownloadError, probe
-from .settings import DEFAULT_UA, Settings, default_data_dir
+from .settings import DB_NAME, DEFAULT_UA, LEGACY_DB, Settings, default_data_dir
 from .storage import Storage
-from .updater import DEFAULT_URL as UPDATE_URL, UpdateCheckError, fetch_latest, is_newer
+from . import updater as U
+from .updater import DEFAULT_URL as UPDATE_URL, UpdateCheckError, fetch_latest, is_installed, is_newer
 from .util import filename_from_url, host_of, now, sanitize_filename, unique_path
 
-log = logging.getLogger("tdownload.engine")
+log = logging.getLogger("qtdownloader.engine")
 
 MAX_TOTAL_CONNECTIONS = 128
 TICK = 0.4
+STARTUP_UPDATE_DELAY = 1.0   # giây sau khi cửa sổ hiện mới hỏi GitHub (không làm chậm lúc mở)
 
 
 def parse_cookie_header(header: str) -> list[tuple[str, str]]:
@@ -60,7 +62,7 @@ class Engine:
         self.io_pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix="tdl-io")
         self.listeners: list[Callable[[str, object], None]] = []
         self.ui_attached = False
-        # App vừa mở (vd extension mở qua tdownload:// rồi gửi link ngay): API đã nhận nhưng cửa sổ chưa nối sự
+        # App vừa mở (vd extension mở qua qtdownloader:// rồi gửi link ngay): API đã nhận nhưng cửa sổ chưa nối sự
         # kiện → giữ lại tới khi giao diện gọi ui_ready(), không làm mất link.
         self._ui_backlog: list[tuple[str, object]] | None = []
         self.queue_running = False
@@ -76,8 +78,12 @@ class Engine:
         self.start_api = start_api
         self.api = None
         self.api_error = ""
-        self.update_url = os.environ.get("TDOWNLOAD_UPDATE_URL") or UPDATE_URL
+        self.update_url = os.environ.get("QTDOWNLOADER_UPDATE_URL") or UPDATE_URL
         self.update_info: dict | None = None
+        self.installed = is_installed()   # cài bằng bộ cài → cập nhật bằng bộ cài mới thay vì gói zip
+        # Tải ngầm bộ cài bản mới: {"stage": downloading|ready|failed, "version", "done", "total", "path", "error"}
+        self.update_state: dict | None = None
+        self._prepare_task: asyncio.Task | None = None
         self._update_task: asyncio.Task | None = None
         self._boot_time = time.monotonic()
 
@@ -106,7 +112,10 @@ class Engine:
             raise boot_error[0]
 
     async def _boot(self) -> None:
-        self.storage = Storage(self.data_dir / "tdownload.db")
+        db = self.data_dir / DB_NAME
+        if not db.exists() and (self.data_dir / LEGACY_DB).exists():   # đang dùng tạm thư mục của bản TDownload cũ
+            db = self.data_dir / LEGACY_DB
+        self.storage = Storage(db)
         resume: list[str] = []
         for d in self.storage.load_all():
             item = M.DownloadItem.from_dict(d)
@@ -141,6 +150,9 @@ class Engine:
         self.io_pool.shutdown(wait=True)
 
     async def _shutdown(self) -> None:
+        for t in (self._prepare_task, self._update_task):   # tải ngầm dở → xoá .part (xem download_verified)
+            if t is not None and not t.done():
+                t.cancel()
         active = [i for i in self._atasks]
         await asyncio.gather(*(self._stop_task(i) for i in active), return_exceptions=True)
         for ident in active:  # đánh dấu để lần sau tự tải tiếp (resume_on_start)
@@ -433,8 +445,13 @@ class Engine:
             return {"status": "latest", "info": info.to_dict()}
         d = info.to_dict()
         self.update_info = d
-        if manual or info.version != self.settings.update_skip_version:
-            self.emit("update_available", d | {"manual": manual})
+        skipped = not manual and info.version == self.settings.update_skip_version
+        if not skipped:
+            auto = (not manual and self.settings.auto_download_updates and self.installed
+                    and bool(info.setup_url) and bool(info.setup_sha256))
+            self.emit("update_available", d | {"manual": manual, "auto_download": auto})
+            if auto:
+                self.start_prepare_update()
         return {"status": "newer", "info": d}
 
     async def skip_update(self, version: str) -> None:
@@ -444,19 +461,95 @@ class Engine:
             self.update_info = None
 
     async def download_update(self) -> str:
-        """Tải gói bản mới bằng chính TDownload, kèm kiểm SHA-256 từ SHA256SUMS.txt của Release."""
+        """Tải bản mới bằng chính QT Downloader, kèm kiểm SHA-256 từ SHA256SUMS.txt của Release.
+
+        Bản đã cài → tải bộ cài (`QTDownloader-<ver>-setup.exe`, giao diện đề nghị chạy ngay); bản giải nén (hoặc
+        bản phát hành chưa có bộ cài) → tải gói zip để người dùng giải nén đè.
+        """
         info = self.update_info
-        if not info or not info.get("asset_url"):
+        if not info or not (info.get("asset_url") or info.get("setup_url")):
             raise DownloadError("Bản phát hành không có gói cài đặt cho Windows")
+        use_setup = bool(info.get("setup_url")) and (self.installed or not info.get("asset_url"))
+        url, name, sha, size = ((info["setup_url"], info["setup_name"], info.get("setup_sha256"), info.get("setup_size"))
+                                if use_setup else
+                                (info["asset_url"], info["asset_name"], info.get("sha256"), info.get("asset_size")))
         return await self.add(
-            info["asset_url"], filename=info["asset_name"],
-            save_dir=os.path.join(self.settings.download_dir, "TDownload-updates"),
-            checksum=("sha256:" + info["sha256"]) if info.get("sha256") else "",
-            description=f"Bản cập nhật TDownload {info['version']}", size=info.get("asset_size") or -1,
+            url, filename=name,
+            save_dir=os.path.join(self.settings.download_dir, "QTDownloader-updates"),
+            checksum=("sha256:" + sha) if sha else "",
+            description=f"Bản cập nhật QT Downloader {info['version']}", size=size or -1,
         )
 
+    # ---- tải ngầm bộ cài (như QT PDF Pro: báo ngay → tải ngầm → "Khởi động lại để cập nhật" / cài khi thoát)
+    @property
+    def updates_dir(self) -> Path:
+        return self.data_dir / "updates"
+
+    def start_prepare_update(self) -> bool:
+        """Bắt đầu tải ngầm bộ cài của `update_info` (không hiện trong danh sách tải). False nếu không có bộ cài."""
+        info = self.update_info
+        if not info or not info.get("setup_url"):
+            return False
+        st = self.update_state
+        if st and st.get("version") == info["version"] and st["stage"] in ("downloading", "ready"):
+            return True
+        if self._prepare_task is not None and not self._prepare_task.done():
+            return True
+        self._prepare_task = asyncio.get_running_loop().create_task(self._prepare_update(dict(info)))
+        return True
+
+    async def prepare_update(self) -> bool:
+        """Cho giao diện gọi qua engine.call (nút "Tải bản mới" ở bản đã cài)."""
+        return self.start_prepare_update()
+
+    async def _prepare_update(self, info: dict) -> None:
+        ver = info["version"]
+        dest = self.updates_dir / info["setup_name"]
+        self.update_state = {"stage": "downloading", "version": ver, "done": 0, "total": info.get("setup_size") or 0}
+
+        def progress(done: int, total: int) -> None:
+            self.update_state = {"stage": "downloading", "version": ver, "done": done, "total": total}
+        try:
+            await self.loop.run_in_executor(self.io_pool, U.cleanup_updates_dir, self.updates_dir, U.__version__,
+                                            info["setup_name"])
+            sha = info.get("setup_sha256") or ""
+            if not (dest.exists() and await self.loop.run_in_executor(self.io_pool, U.file_sha256, dest) == sha):
+                async with self.make_client(http2=False) as c:
+                    await U.download_verified(c, info["setup_url"], dest, sha, info.get("setup_size") or 0, progress)
+        except UpdateCheckError as e:
+            log.warning("Tải ngầm bản %s: %s", ver, e)
+            self.update_state = {"stage": "failed", "version": ver, "error": str(e)}
+            self.emit("update_failed", self.update_state)
+            return
+        except asyncio.CancelledError:
+            self.update_state = None
+            raise
+        except OSError as e:
+            self.update_state = {"stage": "failed", "version": ver, "error": f"Không ghi được bộ cài: {e}"}
+            self.emit("update_failed", self.update_state)
+            return
+        self.update_state = {"stage": "ready", "version": ver, "path": str(dest)}
+        self.emit("update_ready", self.update_state)
+
+    async def startup_update(self, delay: float = STARTUP_UPDATE_DELAY) -> dict:
+        """Gọi một lần khi giao diện đã mở (ui/app.py — test và CLI không gọi nên không hỏi GitHub).
+
+        Trả {"updated_from": phiên bản cũ | ""} để báo "Đã cập nhật"; dọn bộ cài đã dùng; hẹn kiểm tra bản mới.
+        """
+        prev = self.settings.last_run_version
+        if prev != U.__version__:
+            self.settings.last_run_version = U.__version__
+            self.settings.save(self.settings_path)
+        await self.loop.run_in_executor(self.io_pool, U.cleanup_updates_dir, self.updates_dir)
+        if self.settings.check_updates:
+            async def later():
+                await asyncio.sleep(delay)
+                await self.check_update(manual=False)
+            self._update_task = asyncio.get_running_loop().create_task(later())
+        return {"updated_from": prev if prev and is_newer(U.__version__, prev) else ""}
+
     def _maybe_check_update(self) -> None:
-        """Tự kiểm tra 1 lần/ngày, chỉ khi có giao diện (CLI và test không gọi GitHub)."""
+        """App chạy liên tục (dưới khay): kiểm tra lại 1 lần/ngày, chỉ khi có giao diện (CLI và test không gọi)."""
         if not (self.ui_attached and self.settings.check_updates):
             return
         if self._update_task is not None and not self._update_task.done():
@@ -588,6 +681,7 @@ class Engine:
             "active": len(self._atasks),
             "api_error": self.api_error,
             "update": self.update_info,
+            "update_state": self.update_state,
         }
 
 

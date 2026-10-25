@@ -1,6 +1,6 @@
-# Thiết kế engine tải của TDownload
+# Thiết kế engine tải của QT Downloader
 
-Tài liệu này giải thích vì sao tải nhiều kết nối nhanh hơn và cách TDownload cài đặt từng cơ chế. Tham chiếu:
+Tài liệu này giải thích vì sao tải nhiều kết nối nhanh hơn và cách QT Downloader cài đặt từng cơ chế. Tham chiếu:
 RFC 9110 (HTTP Semantics — Range, `206 Partial Content`, `If-Range`), RFC 8216 (HTTP Live Streaming).
 
 ---
@@ -21,7 +21,7 @@ Range (trả `200`), chỉ tải được 1 luồng và không tải tiếp đư
 
 ## 2. Chia đoạn động — `core/segments.py`, `core/http_task.py`
 
-Chia tĩnh (cắt tệp thành N phần bằng nhau ngay từ đầu) để lại "đuôi" cho kết nối chậm nhất. TDownload chia **trong lúc
+Chia tĩnh (cắt tệp thành N phần bằng nhau ngay từ đầu) để lại "đuôi" cho kết nối chậm nhất. QT Downloader chia **trong lúc
 tải**:
 
 1. Probe bằng `GET Range: bytes=0-0` để biết kích thước, ETag, Last-Modified, khả năng Range.
@@ -77,7 +77,7 @@ thì `os.replace` sang tên thật và gắn Mark-of-the-Web (`Zone.Identifier`)
 |---|---|
 | Extension MV3 (Chrome/Edge/Cốc Cốc) | `downloads.onCreated` → ping app → huỷ tải của trình duyệt → gửi URL + cookie (theo từng link) + referer + UA |
 | Cầu nối extension ↔ app | **HTTP `127.0.0.1:41888`** — không cần ghi registry. Kiểm Host (chống DNS rebinding), Origin chỉ nhận trang extension, POST bắt buộc `application/json` (ép preflight CORS) |
-| App chưa chạy | Bắt tự động → để trình duyệt tải. Menu/popup → mở `tdownload://` (người dùng tự bật trong Tuỳ chọn) ở tab tạm của extension, chờ API rồi gửi; không được thì trình duyệt tải |
+| App chưa chạy | Bắt tự động → để trình duyệt tải. Menu/popup → mở `qtdownloader://` (người dùng tự bật trong Tuỳ chọn) ở tab tạm của extension, chờ API rồi gửi; không được thì trình duyệt tải |
 | Phát hiện video | `webRequest.onHeadersReceived` dò `.m3u8`/video theo tab |
 
 Ngoài ra: theo dõi clipboard, kéo-thả link, nhập danh sách `.txt`/`.ef2`.
@@ -86,7 +86,7 @@ Ngoài ra: theo dõi clipboard, kéo-thả link, nhập danh sách `.txt`/`.ef2`
 
 Master playlist → chọn biến thể; tải segment song song vào `<tệp>.tdhls/`; ghép `.ts` (có ffmpeg thì remux sang
 `.mp4`); fMP4 (`#EXT-X-MAP`) → `.mp4`. Luồng có `#EXT-X-KEY` (AES-128, SAMPLE-AES…) bị **từ chối** kèm thông báo —
-TDownload không vượt DRM. Luồng live chưa hỗ trợ.
+QT Downloader không vượt DRM. Luồng live chưa hỗ trợ.
 
 ## 9. Giới hạn cố hữu
 

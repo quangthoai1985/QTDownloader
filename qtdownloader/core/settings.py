@@ -19,13 +19,69 @@ DEFAULT_CAPTURE_EXTS = (
 )
 
 
+LEGACY_NAME = "TDownload"      # tên ứng dụng tới bản 1.0.3
+LEGACY_DB = "tdownload.db"
+DB_NAME = "qtdownloader.db"
+
+
+def _local_appdata() -> Path:
+    return Path(os.environ.get("LOCALAPPDATA") or str(Path.home() / ".local" / "share"))
+
+
 def default_data_dir() -> Path:
-    base = os.environ.get("LOCALAPPDATA") or str(Path.home() / ".local" / "share")
-    return Path(base) / "TDownload"
+    return _local_appdata() / "QTDownloader"
+
+
+def legacy_data_dir() -> Path:
+    return _local_appdata() / LEGACY_NAME
+
+
+def has_legacy_data(legacy_dir: Path) -> bool:
+    return (legacy_dir / "settings.json").exists() or (legacy_dir / LEGACY_DB).exists()
+
+
+def migrate_legacy_data(data_dir: Path, legacy_dir: Path) -> bool:
+    """Chuyển dữ liệu của bản cũ (TDownload ≤ 1.0.3) sang thư mục mới, chỉ khi thư mục mới chưa có.
+
+    Đổi tên cả thư mục (cùng ổ đĩa → nguyên tử) rồi đổi tên CSDL kèm tệp -wal/-shm. Trả True nếu đã chuyển.
+    """
+    if data_dir.exists() or not has_legacy_data(legacy_dir):
+        return False
+    try:
+        data_dir.parent.mkdir(parents=True, exist_ok=True)
+        os.replace(legacy_dir, data_dir)
+    except OSError:
+        return False
+    for suffix in ("", "-wal", "-shm"):
+        old, new = data_dir / (LEGACY_DB + suffix), data_dir / (DB_NAME + suffix)
+        if old.exists() and not new.exists():
+            try:
+                os.replace(old, new)
+            except OSError:
+                pass
+    old_log = data_dir / "logs" / "tdownload.log"
+    if old_log.exists():
+        try:
+            os.replace(old_log, data_dir / "logs" / "qtdownloader.log")
+        except OSError:
+            pass
+    return True
+
+
+def resolve_data_dir() -> Path:
+    """Thư mục dữ liệu của app có giao diện: biến QTDOWNLOADER_DATA (hoặc tên cũ TDOWNLOAD_DATA) nếu có,
+    không thì %LOCALAPPDATA%\\QTDownloader — lần đầu mở bản mới thì chuyển dữ liệu của TDownload sang."""
+    env = os.environ.get("QTDOWNLOADER_DATA") or os.environ.get("TDOWNLOAD_DATA")
+    if env:
+        return Path(env)
+    data_dir, legacy = default_data_dir(), legacy_data_dir()
+    if not migrate_legacy_data(data_dir, legacy) and not data_dir.exists() and has_legacy_data(legacy):
+        return legacy   # chưa đổi tên được (bản cũ đang mở giữ tệp) → dùng tạm thư mục cũ, lần mở sau thử lại
+    return data_dir
 
 
 def default_download_dir() -> str:
-    return str(Path.home() / "Downloads" / "TDownload")
+    return str(Path.home() / "Downloads" / "QTDownloader")
 
 
 @dataclass
@@ -58,12 +114,14 @@ class Settings:
     minimize_to_tray: bool = True
     api_port: int = 41888
     browser_ask: bool = True           # hiện hộp thoại khi trình duyệt chuyển link sang
-    browser_protocol: bool = False     # đăng ký tdownload:// để extension mở được app (ghi HKCU\Software\Classes)
+    browser_protocol: bool = False     # đăng ký qtdownloader:// để extension mở được app (ghi HKCU\Software\Classes)
     autostart: bool = False            # khởi động cùng Windows, xuống khay (ghi HKCU\...\Run)
     capture_exts: str = DEFAULT_CAPTURE_EXTS
     ffmpeg_path: str = ""
     auto_checksum_sidecar: bool = True # tự tìm tệp .sha256 cạnh link để kiểm tra
-    check_updates: bool = True         # tự hỏi GitHub Releases mỗi ngày
+    check_updates: bool = True         # tự hỏi GitHub Releases mỗi lần mở app (+ mỗi ngày nếu chạy liên tục)
+    auto_download_updates: bool = True # bản đã cài: tự tải ngầm bộ cài bản mới, cài khi khởi động lại / thoát app
+    last_run_version: str = ""         # phiên bản lần chạy trước → báo "Đã cập nhật lên …"
     update_skip_version: str = ""      # phiên bản người dùng chọn "Bỏ qua"
     last_update_check: float = 0.0
     schedule: Schedule = field(default_factory=Schedule)

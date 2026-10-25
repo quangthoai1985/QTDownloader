@@ -1,4 +1,4 @@
-"""Cửa sổ chính của TDownload."""
+"""Cửa sổ chính của QT Downloader."""
 
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ URL_RE = re.compile(r"^https?://\S+$", re.I)
 
 
 def parse_ef2(text: str) -> list[dict]:
-    """Đọc tệp xuất danh sách của IDM (.ef2) để chuyển sang TDownload."""
+    """Đọc tệp xuất danh sách của IDM (.ef2) để chuyển sang QT Downloader."""
     items, cur = [], None
     for line in text.replace("\r", "").split("\n"):
         line = line.strip()
@@ -62,7 +62,7 @@ class MainWindow(QMainWindow):
         self._last_clip = ""
         self._tray_hint_shown = False
         self.quitting = False
-        self.setWindowTitle("TDownload — Trình tăng tốc tải xuống")
+        self.setWindowTitle("QT Downloader — Trình tăng tốc tải xuống")
         self.setWindowIcon(icons.app_icon())
         self.resize(1180, 680)
         self.setAcceptDrops(True)
@@ -248,7 +248,7 @@ class MainWindow(QMainWindow):
         self.update_btn.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         self.update_btn.setIcon(icons.icon("all"))
         self.update_btn.setStyleSheet("color: #16a34a; font-weight: 600;")
-        self.update_btn.clicked.connect(lambda: self.show_update(self.engine.snapshot.get("update")))
+        self.update_btn.clicked.connect(self._on_update_badge)
         self.update_btn.hide()
         self._update_dialog = None
         for w in (self.update_btn, self.lbl_speed, self.lbl_active, self.lbl_queue, self.lbl_api, self.limit_btn):
@@ -257,7 +257,7 @@ class MainWindow(QMainWindow):
     def _build_tray(self) -> None:
         self.tray = QSystemTrayIcon(icons.app_icon(), self)
         m = QMenu()
-        m.addAction(icons.app_icon(), "Mở TDownload", self.show_window)
+        m.addAction(icons.app_icon(), "Mở QT Downloader", self.show_window)
         m.addAction(self.a_add)
         m.addAction(self.a_batch)
         m.addSeparator()
@@ -269,6 +269,8 @@ class MainWindow(QMainWindow):
         self.tray.activated.connect(lambda r: self.show_window() if r in (
             QSystemTrayIcon.ActivationReason.Trigger, QSystemTrayIcon.ActivationReason.DoubleClick) else None)
         self._pending_update_popup = False
+        self._update_item: str | None = None            # mục tải bộ cài bản mới
+        self.run_after_exit: list[str] | None = None    # ui/app.py chạy lệnh này sau khi app đã thoát hẳn
         self.tray.messageClicked.connect(self._on_tray_message)
         if QSystemTrayIcon.isSystemTrayAvailable():
             self.tray.show()
@@ -277,7 +279,7 @@ class MainWindow(QMainWindow):
         self.show_window()
         if self._pending_update_popup:
             self._pending_update_popup = False
-            self.show_update(self.engine.snapshot.get("update"))
+            self._on_update_badge()
 
     # ------------------------------------------------------------------ cập nhật định kỳ
     def refresh(self) -> None:
@@ -315,16 +317,12 @@ class MainWindow(QMainWindow):
         self.limit_btn.setToolTip("Giới hạn tốc độ chung: " + (f"{lim} KB/s" if lim else "không"))
         self.limit_btn.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon if lim
                                           else Qt.ToolButtonStyle.ToolButtonIconOnly)
-        upd = snap.get("update")
-        self.update_btn.setVisible(bool(upd))
-        if upd:
-            self.update_btn.setText(f"Có bản {upd['version']}")
-            self.update_btn.setToolTip("Bấm để xem phiên bản mới trên GitHub")
-        self.tray.setToolTip(f"TDownload — {active} đang tải · {fmt_speed(speed) or '0 B/s'}")
+        self._refresh_update_badge(snap)
+        self.tray.setToolTip(f"QT Downloader — {active} đang tải · {fmt_speed(speed) or '0 B/s'}")
         self.tray.setIcon(icons.tray_icon(active > 0))
-        title = "TDownload — Trình tăng tốc tải xuống"
+        title = "QT Downloader — Trình tăng tốc tải xuống"
         if active:
-            title = f"↓ {fmt_speed(speed)} · {active} tệp — TDownload"
+            title = f"↓ {fmt_speed(speed)} · {active} tệp — QT Downloader"
         self.setWindowTitle(title)
         for pd in list(self.progress_dialogs.values()):
             if pd.isVisible():
@@ -543,7 +541,7 @@ class MainWindow(QMainWindow):
         self.show_batch(payload)
 
     def export_list(self) -> None:
-        path, _ = QFileDialog.getSaveFileName(self, "Xuất danh sách link", "tdownload-links.txt", "Văn bản (*.txt)")
+        path, _ = QFileDialog.getSaveFileName(self, "Xuất danh sách link", "qtdownloader-links.txt", "Văn bản (*.txt)")
         if not path:
             return
         items = sorted(self.engine.snapshot["items"].values(), key=lambda i: i["created"])
@@ -552,8 +550,8 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(f"Đã xuất {len(items)} link ra {path}", 6000)
 
     def show_about(self) -> None:
-        QMessageBox.about(self, "Giới thiệu TDownload", (
-            f"<h3>TDownload {__version__}</h3>"
+        QMessageBox.about(self, "Giới thiệu QT Downloader", (
+            f"<h3>QT Downloader {__version__}</h3>"
             "<p>Trình quản lý & tăng tốc tải xuống: chia đoạn động đa kết nối, tải tiếp sau khi mất mạng/tắt máy, "
             "hàng đợi, lịch hẹn, giới hạn tốc độ, tải video HLS, tải đồng thời từ nhiều nguồn, kiểm tra checksum, "
             "nhận link từ Chrome/Edge.</p>"
@@ -561,7 +559,7 @@ class MainWindow(QMainWindow):
             f"<p>Mã nguồn mở theo giấy phép MIT — <a href='https://github.com/{GITHUB_REPO}'>github.com/{GITHUB_REPO}</a>. "
             "Thư viện bên thứ ba (Qt/PySide6 theo LGPL-3.0, Python, httpx…): xem tệp THIRD_PARTY_NOTICES.md "
             "kèm theo.</p>"
-            "<p style='color:gray'>Chỉ tải nội dung bạn có quyền tải. TDownload không vượt DRM.</p>"))
+            "<p style='color:gray'>Chỉ tải nội dung bạn có quyền tải. QT Downloader không vượt DRM.</p>"))
 
     # ------------------------------------------------------------------ menu chuột phải / nhấp đúp
     def _context_menu(self, pos) -> None:
@@ -602,12 +600,22 @@ class MainWindow(QMainWindow):
         elif kind == "message":
             self.statusBar().showMessage(str(payload), 8000)
         elif kind == "update_available":
-            if payload.get("manual") or (self.isVisible() and not self.isMinimized()):
+            # Như QT PDF Pro: tự kiểm tra thì chỉ báo (thông báo khay + nút trên thanh trạng thái), không bật hộp thoại
+            if payload.get("manual"):
                 self.show_update(payload)
             else:
                 self._pending_update_popup = True
-                self.tray.showMessage("Có phiên bản mới", f"TDownload {payload['version']} đã phát hành — bấm để xem",
+                tail = "đang tải ngầm, xong sẽ báo để cài" if payload.get("auto_download") else "bấm để xem"
+                self.tray.showMessage("Có phiên bản mới", f"QT Downloader {payload['version']} đã phát hành — {tail}",
                                       icons.app_icon(), 8000)
+        elif kind == "update_ready":
+            self._pending_update_popup = True
+            self.statusBar().showMessage(f"Bản {payload['version']} đã tải xong — bấm “Khởi động lại để cập nhật”", 15000)
+            self.tray.showMessage("Sẵn sàng cập nhật", f"QT Downloader {payload['version']} đã tải xong. Bấm để khởi "
+                                  "động lại và cập nhật (hoặc bản mới tự cài khi bạn thoát app).", icons.app_icon(), 10000)
+        elif kind == "update_failed":
+            self.statusBar().showMessage(f"Không tải ngầm được bản {payload.get('version')}: {payload.get('error')}",
+                                         15000)
 
     # ------------------------------------------------------------------ cập nhật phiên bản
     def check_updates(self) -> None:
@@ -623,6 +631,56 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Đang hỏi GitHub…", 4000)
         self.bridge.run(self.engine.check_update, True, on_done=done)
 
+    def on_startup_update(self, res: dict | None, err) -> None:
+        """Lần đầu mở sau khi cài bản mới → báo một lần."""
+        if err is None and res and res.get("updated_from"):
+            msg = f"Đã cập nhật QT Downloader từ {res['updated_from']} lên {__version__}"
+            self.statusBar().showMessage(msg, 12000)
+            self.tray.showMessage("Đã cập nhật", msg, icons.app_icon(), 6000)
+
+    def _refresh_update_badge(self, snap: dict) -> None:
+        upd, st = snap.get("update"), snap.get("update_state") or {}
+        self.update_btn.setVisible(bool(upd))
+        if not upd:
+            return
+        if st.get("stage") == "ready":
+            self.update_btn.setText(f"Khởi động lại để cập nhật lên {st['version']}")
+            self.update_btn.setToolTip("Bộ cài đã tải và kiểm SHA-256. Không bấm thì bản mới tự cài khi bạn thoát app.")
+        elif st.get("stage") == "downloading":
+            pct = f" {st['done'] * 100 // st['total']}%" if st.get("total") else ""
+            self.update_btn.setText(f"Đang tải bản {st['version']}…{pct}")
+            self.update_btn.setToolTip("Đang tải ngầm bộ cài bản mới")
+        else:
+            self.update_btn.setText(f"Có bản {upd['version']}")
+            self.update_btn.setToolTip("Bấm để xem phiên bản mới trên GitHub")
+
+    def _on_update_badge(self) -> None:
+        st = self.engine.snapshot.get("update_state") or {}
+        if st.get("stage") == "ready":
+            self.restart_to_update()
+        else:
+            self.show_update(self.engine.snapshot.get("update"))
+
+    def update_ready_path(self) -> str:
+        st = self.engine.snapshot.get("update_state") or self.engine.update_state or {}
+        path = st.get("path") if st.get("stage") == "ready" else ""
+        return path if path and os.path.isfile(path) else ""
+
+    def restart_to_update(self) -> None:
+        path = self.update_ready_path()
+        if not path:
+            return
+        ver = (self.engine.snapshot.get("update_state") or {}).get("version", "")
+        active = self.engine.snapshot.get("active", 0)
+        warn = f"\n\n{active} tệp đang tải sẽ được tạm dừng và tải tiếp sau khi mở lại." if active else ""
+        ok, _ = ask(self, "Cập nhật QT Downloader", f"Khởi động lại để cài bản {ver}? QT Downloader sẽ đóng, cài bản "
+                    f"mới rồi tự mở lại (vài giây).{warn}")
+        if not ok:
+            return
+        # /SILENT: chỉ hiện tiến trình, giữ thư mục cài cũ; /LAUNCHAPP: installer.iss mở lại app khi xong
+        self.run_after_exit = [path, "/SILENT", "/SP-", "/NOCANCEL", "/LAUNCHAPP"]
+        self.quit_app()
+
     def show_update(self, info: dict | None) -> None:
         if not info:
             return
@@ -631,10 +689,27 @@ class MainWindow(QMainWindow):
             self._update_dialog.raise_()
             return
         dlg = UpdateDialog(self.bridge, info, self)
-        dlg.downloaded.connect(lambda ident: self.show_progress(ident))
+        dlg.downloaded.connect(self._on_update_downloading)
+        dlg.preparing.connect(lambda: self.statusBar().showMessage("Đang tải ngầm bộ cài bản mới…", 6000))
         self._update_dialog = dlg
         self._keep(dlg)
         dlg.show()
+
+    def _on_update_downloading(self, ident: str) -> None:
+        self._update_item = ident
+        self.show_progress(ident)
+
+    def _offer_install(self, item: dict) -> None:
+        """Bộ cài bản mới đã tải xong → hỏi cài ngay: app thoát rồi mới chạy bộ cài (nhả tệp và mutex)."""
+        checked = " (đã kiểm SHA-256)" if item.get("checksum_ok") else ""
+        ok, _ = ask(self, "Cài bản mới", f"Đã tải xong bộ cài {item['filename']}{checked}.\n\nCài ngay? QT Downloader "
+                    "sẽ đóng lại trong lúc cài, các tệp đang tải được tạm dừng; cài xong app tự mở lại.")
+        if not ok:
+            reveal_path(item["path"])
+            return
+        # /SILENT: chỉ hiện tiến trình, giữ thư mục cài cũ; /LAUNCHAPP: installer.iss mở lại app khi xong
+        self.run_after_exit = [item["path"], "/SILENT", "/SP-", "/NOCANCEL", "/LAUNCHAPP"]
+        self.quit_app()
 
     def _on_completed(self, d: dict) -> None:
         ident = d["id"]
@@ -646,6 +721,10 @@ class MainWindow(QMainWindow):
         if pd is not None:
             open_after, reveal_after, no_dialog = pd.completion_options()
             pd.close()
+        if ident == self._update_item and item["path"].lower().endswith(".exe") and sys.platform == "win32":
+            self._update_item = None
+            self._offer_install(item)
+            return
         if open_after:
             open_path(item["path"])
         if reveal_after:
@@ -667,7 +746,7 @@ class MainWindow(QMainWindow):
         action = p.get("after_done", "none")
         if not p.get("by_schedule") or action == "none":
             return
-        labels = {"exit": "Thoát TDownload", "sleep": "Cho máy ngủ", "shutdown": "Tắt máy"}
+        labels = {"exit": "Thoát QT Downloader", "sleep": "Cho máy ngủ", "shutdown": "Tắt máy"}
         dlg = CountdownDialog(labels.get(action, action), 60, None)
         dlg.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
         if dlg.exec() != CountdownDialog.DialogCode.Accepted:
@@ -675,8 +754,8 @@ class MainWindow(QMainWindow):
         if action == "exit":
             self.quit_app()
         elif action == "shutdown" and sys.platform == "win32":
-            subprocess.Popen(["shutdown", "/s", "/t", "30", "/c", "TDownload: hàng đợi đã xong"])
-            self.quit_app()
+            subprocess.Popen(["shutdown", "/s", "/t", "30", "/c", "QT Downloader: hàng đợi đã xong"])
+            self.quit_app(install_update=False)
         elif action == "sleep" and sys.platform == "win32":
             subprocess.Popen(["rundll32.exe", "powrprof.dll,SetSuspendState", "0,1,0"])
 
@@ -716,14 +795,18 @@ class MainWindow(QMainWindow):
             self.hide()
             if not self._tray_hint_shown:
                 self._tray_hint_shown = True
-                self.tray.showMessage("TDownload vẫn đang chạy", "Ứng dụng thu nhỏ xuống khay để tiếp tục tải và "
+                self.tray.showMessage("QT Downloader vẫn đang chạy", "Ứng dụng thu nhỏ xuống khay để tiếp tục tải và "
                                       "nhận link từ trình duyệt. Chuột phải biểu tượng → Thoát để tắt hẳn.",
                                       icons.app_icon(), 5000)
             return
         self.quit_app()
         e.accept()
 
-    def quit_app(self) -> None:
+    def quit_app(self, install_update: bool = True) -> None:
+        """Thoát hẳn. Bộ cài bản mới đã tải ngầm mà người dùng chưa bấm "Khởi động lại" → cài im lặng sau khi thoát
+        (không mở lại app) — như QT PDF Pro. Không cài khi sắp tắt máy (install_update=False)."""
+        if install_update and self.run_after_exit is None and (path := self.update_ready_path()):
+            self.run_after_exit = [path, "/VERYSILENT", "/SUPPRESSMSGBOXES", "/SP-", "/NOCANCEL"]
         self.quitting = True
         for d in list(self.progress_dialogs.values()):
             d.close()

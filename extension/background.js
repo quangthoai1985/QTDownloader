@@ -76,9 +76,9 @@ if (chrome.downloads.onDeterminingFilename) {
 // ------------------------------------------------------------------ menu chuột phải
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.removeAll(() => {
-    chrome.contextMenus.create({ id: "td-link", title: "Tải bằng TDownload", contexts: ["link", "image", "video", "audio"] });
-    chrome.contextMenus.create({ id: "td-selection", title: "Tải các liên kết đã chọn bằng TDownload", contexts: ["selection"] });
-    chrome.contextMenus.create({ id: "td-all", title: "Tải tất cả liên kết trên trang bằng TDownload", contexts: ["page"] });
+    chrome.contextMenus.create({ id: "td-link", title: "Tải bằng QT Downloader", contexts: ["link", "image", "video", "audio"] });
+    chrome.contextMenus.create({ id: "td-selection", title: "Tải các liên kết đã chọn bằng QT Downloader", contexts: ["selection"] });
+    chrome.contextMenus.create({ id: "td-all", title: "Tải tất cả liên kết trên trang bằng QT Downloader", contexts: ["page"] });
   });
 });
 
@@ -94,30 +94,30 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     });
   } else if (tabId !== undefined) {
     const why = await ensureApp(cfg, tabId);
-    if (why) return warn("Chưa gửi được sang TDownload", why);
+    if (why) return warn("Chưa gửi được sang QT Downloader", why);
     await sendPageLinks(cfg, tab, info.menuItemId === "td-selection");
   }
 });
 
 // ------------------------------------------------------------------ app chưa chạy
-const HINT_ENABLE = "Bật Tuỳ chọn → Trình duyệt → “Cho phép trình duyệt mở TDownload” trong app để extension tự mở " +
+const HINT_ENABLE = "Bật Tuỳ chọn → Trình duyệt → “Cho phép trình duyệt mở QT Downloader” trong app để extension tự mở " +
                     "app, hoặc bật “Khởi động cùng Windows”.";
 
-// Bảo đảm app đang chạy; nếu chưa thì mở qua tdownload:// rồi chờ API lên.
+// Bảo đảm app đang chạy; nếu chưa thì mở qua qtdownloader:// rồi chờ API lên.
 // Trả về "" khi app sẵn sàng, ngược lại là lý do (tiếng Việt) để báo người dùng.
-// manual = người dùng bấm "Mở TDownload": luôn thử và hiện cửa sổ chính.
+// manual = người dùng bấm "Mở QT Downloader": luôn thử và hiện cửa sổ chính.
 async function ensureApp(cfg, tabId, manual = false) {
   if (await ping(cfg)) return "";
   const known = await protocolState();
-  if (!manual && !cfg.launchApp) return "TDownload chưa chạy (đã tắt “Tự mở TDownload” trong tuỳ chọn extension).";
-  if (!manual && known === false) return "TDownload chưa chạy. " + HINT_ENABLE;
+  if (!manual && !cfg.launchApp) return "QT Downloader chưa chạy (đã tắt “Tự mở QT Downloader” trong tuỳ chọn extension).";
+  if (!manual && known === false) return "QT Downloader chưa chạy. " + HINT_ENABLE;
   setWaiting(true);
   let tmp;
   try {
-    // Mở ở tab tạm (launch.html tự điều hướng tới tdownload://) thay vì điều hướng tab hiện tại: không đụng
-    // tới trang người dùng đang xem. Giao thức đã đăng ký → trình duyệt hỏi "Mở TDownload?" kèm ô "Luôn cho
+    // Mở ở tab tạm (launch.html tự điều hướng tới qtdownloader://) thay vì điều hướng tab hiện tại: không đụng
+    // tới trang người dùng đang xem. Giao thức đã đăng ký → trình duyệt hỏi "Mở QT Downloader?" kèm ô "Luôn cho
     // phép" (nhờ origin của extension); chưa đăng ký → không có gì xảy ra.
-    const target = manual ? "tdownload://open" : "tdownload://open?minimized=1";
+    const target = manual ? "qtdownloader://open" : "qtdownloader://open?minimized=1";
     tmp = await chrome.tabs.create({
       url: chrome.runtime.getURL("launch.html") + "?u=" + encodeURIComponent(target),
       active: true, ...(tabId !== undefined ? { openerTabId: tabId } : {}),
@@ -125,10 +125,10 @@ async function ensureApp(cfg, tabId, manual = false) {
     // app khởi động mất 3–4 giây, người dùng còn phải bấm "Mở" trong hộp thoại; biết chắc giao thức đã
     // đăng ký thì chờ lâu hơn. Chưa biết (app chưa từng báo) mà không mở được thì tab tạm đứng 10 giây.
     if (await waitForApp(cfg, known || manual ? 15000 : 10000)) return "";
-    return known ? "Không mở được TDownload (đã chờ 15 giây). Hãy mở app rồi thử lại."
-                 : "TDownload chưa chạy và không mở được. " + HINT_ENABLE;
+    return known ? "Không mở được QT Downloader (đã chờ 15 giây). Hãy mở app rồi thử lại."
+                 : "QT Downloader chưa chạy và không mở được. " + HINT_ENABLE;
   } catch (e) {
-    return "Không mở được TDownload: " + e;
+    return "Không mở được QT Downloader: " + e;
   } finally {
     if (tmp) await closeTempTab(tmp.id);
     setWaiting(false);
@@ -139,7 +139,7 @@ async function closeTempTab(id) {
   try {
     const t = await chrome.tabs.get(id);
     const u = t.pendingUrl || t.url || "";   // không có quyền xem URL → "" (vẫn là tab của mình)
-    const ours = !u || u.startsWith(chrome.runtime.getURL("launch.html")) || u.startsWith("tdownload:");
+    const ours = !u || u.startsWith(chrome.runtime.getURL("launch.html")) || u.startsWith("qtdownloader:");
     if (ours) await chrome.tabs.remove(id);   // người dùng đã chuyển tab sang trang khác thì để nguyên
   } catch {
     // người dùng đã tự đóng tab
@@ -156,11 +156,11 @@ async function sendLink(cfg, tabId, body, browserFallback = true) {
       flashBadge("✓");
       return "sent";
     } catch (e) {
-      why = "TDownload không nhận link: " + e.message;
+      why = "QT Downloader không nhận link: " + e.message;
     }
   }
   if (!browserFallback) {
-    warn("Chưa gửi được sang TDownload", why);
+    warn("Chưa gửi được sang QT Downloader", why);
     return "failed";
   }
   try {
@@ -260,14 +260,14 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
     } else if (msg.type === "sendAll") {
       const why = await ensureApp(cfg, msg.tab.id);
       if (why) {
-        warn("Chưa gửi được sang TDownload", why);
+        warn("Chưa gửi được sang QT Downloader", why);
         return reply({ ok: false, error: why });
       }
       await sendPageLinks(cfg, msg.tab, false);
       reply({ ok: true });
     } else if (msg.type === "openApp") {
       const why = await ensureApp(cfg, msg.tabId, true);
-      if (why) warn("Chưa mở được TDownload", why);
+      if (why) warn("Chưa mở được QT Downloader", why);
       reply({ ok: !why, error: why });
     }
   })().catch((e) => reply({ ok: false, error: String(e) }));
@@ -275,7 +275,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
 });
 
 // ------------------------------------------------------------------ báo cho người dùng
-const TITLE = "TDownload";
+const TITLE = "QT Downloader";
 let badgeTimer;
 
 function badge(text, color, ms) {
@@ -293,7 +293,7 @@ function flashBadge(text) {
 }
 
 function setWaiting(on) {
-  chrome.action.setTitle({ title: on ? "TDownload — đang mở ứng dụng…" : TITLE });
+  chrome.action.setTitle({ title: on ? "QT Downloader — đang mở ứng dụng…" : TITLE });
   if (on) badge("…", "#6b7280");
   else chrome.action.setBadgeText({ text: "" });
 }
@@ -301,7 +301,7 @@ function setWaiting(on) {
 // Huy hiệu "!" + tiêu đề nút (luôn có) + thông báo hệ thống (rõ hơn, người dùng thấy ngay).
 function warn(title, message) {
   badge("!", "#dc2626", 15000);
-  chrome.action.setTitle({ title: `TDownload — ${title}\n${message}` });
+  chrome.action.setTitle({ title: `QT Downloader — ${title}\n${message}` });
   chrome.notifications.create({ type: "basic", iconUrl: "icons/128.png", title, message, priority: 1 },
     () => void chrome.runtime.lastError);
 }

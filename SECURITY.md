@@ -17,6 +17,6 @@ công bố sau khi có bản vá, và ghi công người báo nếu bạn muốn
 - API cục bộ `127.0.0.1:41888` (`core/api_server.py`): kiểm Host/Origin/CORS — mọi cách khiến trang web lạ thêm link
   hay đọc dữ liệu đều là lỗ hổng.
 - Extension trình duyệt: cookie chỉ được gửi cho đúng host của link.
-- Giao thức `tdownload://` và khởi động cùng Windows (`core/integration.py`): chỉ ghi registry khi người dùng bật.
+- Giao thức `qtdownloader://` và khởi động cùng Windows (`core/integration.py`): chỉ ghi registry khi người dùng bật.
 - Tên tệp từ máy chủ (`Content-Disposition`): không được thoát khỏi thư mục tải (path traversal).
 - Cơ chế cập nhật (`core/updater.py`): kiểm SHA-256 của gói tải về.

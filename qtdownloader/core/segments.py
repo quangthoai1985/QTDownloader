@@ -4,7 +4,7 @@
   * File bắt đầu là 1 đoạn. Mỗi kết nối mới lấy NỬA SAU của đoạn còn lại lớn nhất.
   * Kết nối tải xong phần mình KHÔNG đóng: nó lại lấy nửa sau của đoạn lớn nhất
     đang tải dở → không mất thời gian bắt tay TCP/TLS (tái dùng keep-alive).
-  * Bổ sung của TDownload: mỗi kết nối gửi yêu cầu theo "cửa sổ" (Range có giới hạn).
+  * Bổ sung của QT Downloader: mỗi kết nối gửi yêu cầu theo "cửa sổ" (Range có giới hạn).
     Khi chia đoạn, ưu tiên cắt sau cửa sổ đang bay của nạn nhân, để nạn nhân đọc hết
     phản hồi và giữ được kết nối thay vì phải huỷ giữa chừng.
 

@@ -1,6 +1,6 @@
 # Thông báo giấy phép của thành phần bên thứ ba
 
-Mã nguồn TDownload phát hành theo giấy phép [MIT](LICENSE). Bản đóng gói `TDownload.exe` (PyInstaller) có kèm các
+Mã nguồn QT Downloader phát hành theo giấy phép [MIT](LICENSE). Bản đóng gói `QTDownloader.exe` (PyInstaller) có kèm các
 thành phần dưới đây, mỗi thành phần giữ giấy phép riêng; văn bản đầy đủ nằm trong thư mục [`licenses/`](licenses/).
 Phiên bản ghi theo bản phát hành gần nhất; chạy từ mã nguồn thì dùng bản `pip` đã cài.
 
@@ -22,9 +22,9 @@ Phiên bản ghi theo bản phát hành gần nhất; chạy từ mã nguồn th
 
 ## Ghi chú về Qt / PySide6 (LGPL-3.0)
 
-- TDownload dùng Qt và PySide6 **nguyên bản, không sửa đổi**, liên kết động: các tệp `Qt6*.dll`, `pyside6*.dll`,
+- QT Downloader dùng Qt và PySide6 **nguyên bản, không sửa đổi**, liên kết động: các tệp `Qt6*.dll`, `pyside6*.dll`,
   `shiboken6*.dll` nằm riêng trong thư mục `_internal\PySide6` của gói. Bạn có quyền thay chúng bằng một bản Qt/PySide6
-  tương thích khác (kể cả bản tự biên dịch) mà không cần mã nguồn của TDownload — dù mã nguồn TDownload vẫn công khai
+  tương thích khác (kể cả bản tự biên dịch) mà không cần mã nguồn của QT Downloader — dù mã nguồn QT Downloader vẫn công khai
   theo MIT.
 - Mã nguồn tương ứng của Qt/PySide6 lấy tại các địa chỉ trong bảng, đúng phiên bản ghi ở trên.
 
@@ -34,4 +34,4 @@ Phiên bản ghi theo bản phát hành gần nhất; chạy từ mã nguồn th
   bất kỳ) — https://github.com/pyinstaller/pyinstaller.
 - **Microsoft Visual C++ Runtime / Universal CRT** (`VCRUNTIME140*.dll`, `api-ms-win-*.dll`, `ucrtbase.dll`) —
   phân phối lại theo điều khoản tệp phân phối lại của Microsoft.
-- Icon của TDownload do dự án tự vẽ (`tdownload/ui/icons.py`, `tools/make_icons.py`), theo giấy phép MIT của dự án.
+- Icon của QT Downloader do dự án tự vẽ (`qtdownloader/ui/icons.py`, `tools/make_icons.py`), theo giấy phép MIT của dự án.

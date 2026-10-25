@@ -1,16 +1,16 @@
 {
   "manifest_version": 3,
-  "name": "TDownload — Tích hợp trình duyệt",
-  "short_name": "TDownload",
-  "version": "1.0.3",
-  "description": "Chuyển tải xuống từ trình duyệt sang TDownload (đa kết nối, tải tiếp, hàng đợi) và phát hiện video HLS/MP4.",
+  "name": "QT Downloader — Tích hợp trình duyệt",
+  "short_name": "QT Downloader",
+  "version": "1.1.0",
+  "description": "Chuyển tải xuống từ trình duyệt sang QT Downloader (đa kết nối, tải tiếp, hàng đợi) và phát hiện video HLS/MP4.",
   "minimum_chrome_version": "116",
   "permissions": ["downloads", "contextMenus", "cookies", "storage", "webRequest", "scripting", "activeTab",
                   "notifications"],
   "host_permissions": ["<all_urls>"],
   "background": { "service_worker": "background.js", "type": "module" },
   "action": {
-    "default_title": "TDownload",
+    "default_title": "QT Downloader",
     "default_popup": "popup.html",
     "default_icon": { "16": "icons/16.png", "32": "icons/32.png", "48": "icons/48.png" }
   },

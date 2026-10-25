@@ -1,4 +1,4 @@
-"""Các hộp thoại của TDownload."""
+"""Các hộp thoại của QT Downloader."""
 
 from __future__ import annotations
 
@@ -144,7 +144,7 @@ class AddUrlDialog(QDialog):
         self.conns = QSpinBox()
         self.conns.setRange(1, 32)
         self.conns.setValue(s.max_connections)
-        self.conns.setToolTip("IDM mặc định 8; tối đa 32. Server giới hạn thì TDownload tự giảm.")
+        self.conns.setToolTip("IDM mặc định 8; tối đa 32. Server giới hạn thì QT Downloader tự giảm.")
         row.addWidget(self.conns)
         form.addRow("Phân loại:", row)
         self.dir = QLineEdit()
@@ -167,7 +167,7 @@ class AddUrlDialog(QDialog):
         self.cookies.setEchoMode(QLineEdit.EchoMode.PasswordEchoOnEdit)
         af.addRow("Cookie:", self.cookies)
         self.mirrors = QPlainTextEdit()
-        self.mirrors.setPlaceholderText("Mỗi dòng một link khác của CÙNG tệp — TDownload tải song song từ tất cả")
+        self.mirrors.setPlaceholderText("Mỗi dòng một link khác của CÙNG tệp — QT Downloader tải song song từ tất cả")
         self.mirrors.setFixedHeight(60)
         af.addRow("Nguồn phụ:", self.mirrors)
         self.checksum = QLineEdit()
@@ -270,7 +270,7 @@ class AddUrlDialog(QDialog):
             self.variant.setVisible(has)
             self.variant_row.setVisible(has)
             if info.get("encrypted"):
-                self.warn.setText("Luồng này được mã hoá/DRM — TDownload không tải nội dung được bảo vệ.")
+                self.warn.setText("Luồng này được mã hoá/DRM — QT Downloader không tải nội dung được bảo vệ.")
                 self.warn.show()
             elif info.get("live"):
                 self.warn.setText("Đây là luồng trực tiếp (live) — chưa hỗ trợ.")
@@ -495,9 +495,16 @@ class SettingsDialog(QDialog):
         self.resume_start = QCheckBox("Mở app thì tự tải tiếp các tệp đang tải dở")
         self.resume_start.setChecked(s.resume_on_start)
         f.addRow("", self.resume_start)
-        self.check_updates = QCheckBox("Tự kiểm tra phiên bản mới trên GitHub mỗi ngày")
+        self.check_updates = QCheckBox("Tự kiểm tra phiên bản mới trên GitHub mỗi khi mở app")
         self.check_updates.setChecked(s.check_updates)
         f.addRow("", self.check_updates)
+        self.auto_download_updates = QCheckBox("Tự tải ngầm bản mới, cài khi khởi động lại hoặc thoát app")
+        self.auto_download_updates.setToolTip("Chỉ áp dụng cho bản cài bằng bộ cài (QTDownloader-…-setup.exe). "
+                                              "Bản giải nén từ gói zip chỉ được báo có bản mới.")
+        self.auto_download_updates.setChecked(s.auto_download_updates)
+        self.check_updates.toggled.connect(self.auto_download_updates.setEnabled)
+        self.auto_download_updates.setEnabled(s.check_updates)
+        f.addRow("", self.auto_download_updates)
         self.autostart = QCheckBox("Khởi động cùng Windows (thu nhỏ xuống khay)")
         self.autostart.setChecked(s.autostart)
         self.autostart.setEnabled(sys.platform == "win32")
@@ -556,16 +563,16 @@ class SettingsDialog(QDialog):
         self.ask = QCheckBox("Hiện hộp thoại xác nhận khi trình duyệt chuyển link sang")
         self.ask.setChecked(s.browser_ask)
         f.addRow("", self.ask)
-        self.protocol = QCheckBox("Cho phép trình duyệt mở TDownload (giao thức tdownload://)")
+        self.protocol = QCheckBox("Cho phép trình duyệt mở QT Downloader (giao thức qtdownloader://)")
         self.protocol.setChecked(s.browser_protocol)
         self.protocol.setEnabled(sys.platform == "win32")
         pbox = QVBoxLayout()
         pbox.setSpacing(2)
         pbox.addWidget(self.protocol)
-        phint = _muted("Khi app chưa chạy, bấm “Tải bằng TDownload” hoặc nút “Mở TDownload” trên extension sẽ "
-                       "mở app (trình duyệt hỏi có mở TDownload không — chọn Mở, tích “luôn cho phép” để lần sau "
+        phint = _muted("Khi app chưa chạy, bấm “Tải bằng QT Downloader” hoặc nút “Mở QT Downloader” trên extension sẽ "
+                       "mở app (trình duyệt hỏi có mở QT Downloader không — chọn Mở, tích “luôn cho phép” để lần sau "
                        "khỏi hỏi). Ghi vào "
-                       "<code>HKCU\\Software\\Classes\\tdownload</code>; bỏ chọn thì gỡ.")
+                       "<code>HKCU\\Software\\Classes\\qtdownloader</code>; bỏ chọn thì gỡ.")
         phint.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         pbox.addWidget(phint)
         f.addRow("", pbox)
@@ -609,7 +616,7 @@ class SettingsDialog(QDialog):
                 integration.register_protocol() if proto else integration.unregister_protocol()
             except OSError as e:
                 proto = s.browser_protocol
-                QMessageBox.warning(self, "Lỗi", f"Không ghi được registry cho giao thức tdownload://:\n{e}")
+                QMessageBox.warning(self, "Lỗi", f"Không ghi được registry cho giao thức qtdownloader://:\n{e}")
         if auto != s.autostart:
             try:
                 integration.set_autostart(auto)
@@ -627,6 +634,7 @@ class SettingsDialog(QDialog):
             show_complete_dialog=self.show_done.isChecked(), monitor_clipboard=self.clip.isChecked(),
             minimize_to_tray=self.tray.isChecked(), resume_on_start=self.resume_start.isChecked(),
             check_updates=self.check_updates.isChecked(),
+            auto_download_updates=self.auto_download_updates.isChecked(),
             max_connections=self.max_conn.value(), max_concurrent=self.max_conc.value(),
             global_speed_limit_kb=self.glimit.value(), min_split_kb=self.min_split.value(),
             max_retries=self.retries.value(), timeout=self.timeout.value(), http2=self.http2.isChecked(),
@@ -637,7 +645,7 @@ class SettingsDialog(QDialog):
         )
         self.bridge.run(self.bridge.engine.update_settings, values)
         if port_changed:
-            QMessageBox.information(self, "Cần khởi động lại", "Cổng mới có hiệu lực sau khi mở lại TDownload. "
+            QMessageBox.information(self, "Cần khởi động lại", "Cổng mới có hiệu lực sau khi mở lại QT Downloader. "
                                     "Nhớ đổi cổng tương ứng trong tuỳ chọn của extension.")
         self.accept()
 
@@ -645,7 +653,7 @@ class SettingsDialog(QDialog):
 # ============================================================================ Lịch hẹn
 class SchedulerDialog(QDialog):
     DAYS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]
-    ACTIONS = [("none", "Không làm gì"), ("exit", "Thoát TDownload"), ("sleep", "Cho máy ngủ (Sleep)"),
+    ACTIONS = [("none", "Không làm gì"), ("exit", "Thoát QT Downloader"), ("sleep", "Cho máy ngủ (Sleep)"),
                ("shutdown", "Tắt máy")]
 
     def __init__(self, bridge: Bridge, parent=None):
@@ -746,7 +754,7 @@ class PropertiesDialog(QDialog):
         self.desc = QLineEdit(it.get("description", ""))
         form.addRow("Mô tả:", self.desc)
         lay.addLayout(form)
-        lay.addWidget(_muted("Link hết hạn? Dán link mới vào ô Địa chỉ rồi bấm 'Cập nhật địa chỉ tải' — TDownload "
+        lay.addWidget(_muted("Link hết hạn? Dán link mới vào ô Địa chỉ rồi bấm 'Cập nhật địa chỉ tải' — QT Downloader "
                              "kiểm tra cùng kích thước rồi tải tiếp phần còn lại (giống Refresh download address của IDM)."))
         bb = QHBoxLayout()
         refresh = QPushButton(icons.icon("link"), "Cập nhật địa chỉ tải")
@@ -833,7 +841,8 @@ class CompleteDialog(QDialog):
 class UpdateDialog(QDialog):
     """Báo có phiên bản mới trên GitHub Releases."""
 
-    downloaded = Signal(str)   # id mục tải gói cập nhật
+    downloaded = Signal(str)   # id mục tải gói cập nhật (bản giải nén: gói zip hiện trong danh sách tải)
+    preparing = Signal()       # bản đã cài: bắt đầu tải ngầm bộ cài
 
     def __init__(self, bridge: Bridge, info: dict, parent=None):
         super().__init__(parent)
@@ -851,7 +860,7 @@ class UpdateDialog(QDialog):
         logo = QLabel()
         logo.setPixmap(icons.app_pixmap(48))
         head.addWidget(logo)
-        title = QLabel(f"<b style='font-size:15px'>TDownload {info['version']} đã phát hành</b><br>"
+        title = QLabel(f"<b style='font-size:15px'>QT Downloader {info['version']} đã phát hành</b><br>"
                        f"<span style='color:gray'>Bạn đang dùng {__version__}"
                        f"{' · ' + info['published'][:10] if info.get('published') else ''}</span>")
         head.addWidget(title, 1)
@@ -860,10 +869,17 @@ class UpdateDialog(QDialog):
         notes.setOpenExternalLinks(True)
         notes.setMarkdown(info.get("notes") or "_(Bản phát hành không có ghi chú)_")
         lay.addWidget(notes, 1)
-        if info.get("asset_url"):
+        installed = bool(getattr(bridge.engine, "installed", False))
+        if info.get("setup_url") and (installed or not info.get("asset_url")):
+            size = fmt_size(info.get("setup_size") or -1)
+            chk = " · có kiểm SHA-256" if info.get("setup_sha256") else ""
+            lay.addWidget(_muted(f"Bộ cài: {info['setup_name']} ({size}){chk}. Tải ngầm xong, bấm “Khởi động lại để cập "
+                                 "nhật” ở thanh trạng thái — hoặc bản mới tự cài khi bạn thoát app (dữ liệu và danh "
+                                 "sách tải được giữ nguyên)."))
+        elif info.get("asset_url"):
             size = fmt_size(info.get("asset_size") or -1)
             chk = " · có kiểm SHA-256" if info.get("sha256") else ""
-            lay.addWidget(_muted(f"Gói tải: {info['asset_name']} ({size}){chk}. Tải xong, đóng TDownload rồi giải nén "
+            lay.addWidget(_muted(f"Gói tải: {info['asset_name']} ({size}){chk}. Tải xong, đóng QT Downloader rồi giải nén "
                                  "đè lên thư mục cũ (dữ liệu và danh sách tải được giữ nguyên)."))
         btns = QHBoxLayout()
         skip = QPushButton("Bỏ qua bản này")
@@ -871,7 +887,7 @@ class UpdateDialog(QDialog):
         page = QPushButton(icons.icon("globe"), "Xem trên GitHub")
         get = QPushButton(icons.icon("all"), "Tải bản mới")
         get.setDefault(True)
-        get.setVisible(bool(info.get("asset_url")))
+        get.setVisible(bool(info.get("asset_url") or info.get("setup_url")))
         page.setVisible(bool(info.get("page_url")))
         btns.addWidget(skip)
         btns.addStretch(1)
@@ -888,6 +904,17 @@ class UpdateDialog(QDialog):
         self.reject()
 
     def _download(self) -> None:
+        info = self.info
+        if info.get("setup_url") and info.get("setup_sha256") and getattr(self.bridge.engine, "installed", False):
+            def started(ok, err):
+                if err is not None or not ok:
+                    QMessageBox.warning(self, "Không tải được bản mới", str(err or "Bản phát hành không có bộ cài"))
+                    return
+                self.preparing.emit()
+                self.accept()
+            self.bridge.run(self.bridge.engine.prepare_update, on_done=started)
+            return
+
         def done(ident, err):
             if err is not None:
                 QMessageBox.warning(self, "Không tải được bản mới", str(err))

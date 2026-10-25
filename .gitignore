@@ -12,7 +12,7 @@ __pycache__/
 .venv/
 venv/
 
-# Tệp tạm của TDownload khi thử nghiệm
+# Tệp tạm của QT Downloader khi thử nghiệm
 *.tdpart
 *.tdhls/
 

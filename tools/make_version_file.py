@@ -1,6 +1,6 @@
-"""Sinh assets/version_info.txt (tài nguyên phiên bản Windows cho PyInstaller) từ tdownload.__version__.
+"""Sinh assets/version_info.txt (tài nguyên phiên bản Windows cho PyInstaller) từ qtdownloader.__version__.
 
-Nhờ đó chuột phải TDownload.exe → Properties → Details hiện đúng số phiên bản.
+Nhờ đó chuột phải QTDownloader.exe → Properties → Details hiện đúng số phiên bản.
 """
 
 import os
@@ -10,7 +10,7 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-from tdownload import APP_NAME, __version__  # noqa: E402
+from qtdownloader import APP_ID, APP_NAME, __version__  # noqa: E402
 
 m = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", __version__)
 if not m:
@@ -26,8 +26,8 @@ VSVersionInfo(
       StringStruct('CompanyName', '{app}'),
       StringStruct('FileDescription', '{app} - Trình tăng tốc tải xuống'),
       StringStruct('FileVersion', '{ver}'),
-      StringStruct('InternalName', '{app}'),
-      StringStruct('OriginalFilename', '{app}.exe'),
+      StringStruct('InternalName', '{exe}'),
+      StringStruct('OriginalFilename', '{exe}.exe'),
       StringStruct('ProductName', '{app}'),
       StringStruct('ProductVersion', '{ver}'),
     ])]),
@@ -39,5 +39,5 @@ VSVersionInfo(
 out = os.path.join(ROOT, "assets", "version_info.txt")
 os.makedirs(os.path.dirname(out), exist_ok=True)
 with open(out, "w", encoding="utf-8") as f:
-    f.write(TEMPLATE.format(nums=nums, ver=__version__, app=APP_NAME))
+    f.write(TEMPLATE.format(nums=nums, ver=__version__, app=APP_NAME, exe=APP_ID))
 print("version", __version__, "->", out)

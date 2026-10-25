@@ -1,6 +1,6 @@
 # Quy tắc ứng xử
 
-TDownload áp dụng [Contributor Covenant phiên bản 2.1](https://www.contributor-covenant.org/vi/version/2/1/code_of_conduct/).
+QT Downloader áp dụng [Contributor Covenant phiên bản 2.1](https://www.contributor-covenant.org/vi/version/2/1/code_of_conduct/).
 Tóm tắt những điều cốt lõi:
 
 ## Cam kết

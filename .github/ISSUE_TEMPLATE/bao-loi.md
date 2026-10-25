@@ -14,12 +14,12 @@ labels: bug
 3.
 
 **Môi trường**
-- Phiên bản TDownload (Trợ giúp → Giới thiệu):
+- Phiên bản QT Downloader (Trợ giúp → Giới thiệu):
 - Windows:
 - Trình duyệt + phiên bản extension (nếu liên quan):
 - Link / máy chủ (nếu được phép chia sẻ):
 
 **Nhật ký**
-<!-- Trích %LOCALAPPDATA%\TDownload\logs\tdownload.log quanh thời điểm lỗi. XOÁ cookie, token, link riêng tư trước khi dán. -->
+<!-- Trích %LOCALAPPDATA%\QTDownloader\logs\qtdownloader.log quanh thời điểm lỗi. XOÁ cookie, token, link riêng tư trước khi dán. -->
 
 <!-- Lỗ hổng bảo mật: đừng báo ở đây, xem SECURITY.md. -->

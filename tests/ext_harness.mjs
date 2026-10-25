@@ -21,7 +21,7 @@ function launchApp() {
       if (req.url === "/api/add" && addFails) res.statusCode = 500;
       res.setHeader("Connection", "close");     // không để socket keep-alive treo lúc thoát (Node/Windows)
       res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify(req.url === "/api/ping" ? { app: "TDownload", active: 0, protocol: true } : { ok: true }));
+      res.end(JSON.stringify(req.url === "/api/ping" ? { app: "QT Downloader", active: 0, protocol: true } : { ok: true }));
     });
   });
   app.listen(PORT, "127.0.0.1");
@@ -51,7 +51,7 @@ globalThis.chrome = {
   tabs: {
     onUpdated: ev("updated"), onRemoved: ev("removed"),
     create: rec("tabs.create", (o) => {
-      if (launchOnOpen && o.url.includes("launch.html?u=tdownload")) setTimeout(launchApp, 300);   // Windows mở app
+      if (launchOnOpen && o.url.includes("launch.html?u=qtdownloader")) setTimeout(launchApp, 300);   // Windows mở app
       return { id: 99 };
     }),
     get: async (id) => ({ id, url: "" }),
@@ -79,21 +79,21 @@ const menuLink = (url) => on.menu({ menuItemId: "td-link", linkUrl: url, pageUrl
 const message = (msg) => new Promise((r) => on.message(msg, {}, r));
 let passed = 0;
 
-// 1. App tắt, app từng báo chưa bật tdownload:// → trình duyệt tải ngay, có thông báo, không mở tab
+// 1. App tắt, app từng báo chưa bật qtdownloader:// → trình duyệt tải ngay, có thông báo, không mở tab
 reset({ protocol: false });
 await menuLink("https://h.vn/a.zip");
 assert.deepEqual(called("download").map((c) => c[1].url), ["https://h.vn/a.zip"]);
 assert.equal(called("tabs.create").length, 0);
 assert.equal(called("notify").length, 1);
-assert.match(called("notify")[0][1].message, /Cho phép trình duyệt mở TDownload/);
+assert.match(called("notify")[0][1].message, /Cho phép trình duyệt mở QT Downloader/);
 passed++;
 
-// 2. Giao thức đã đăng ký: mở tdownload:// ở tab tạm → app lên → gửi link sang app, đóng tab tạm
+// 2. Giao thức đã đăng ký: mở qtdownloader:// ở tab tạm → app lên → gửi link sang app, đóng tab tạm
 reset({ protocol: null });
 launchOnOpen = true;
 await menuLink("https://h.vn/b.zip");
 assert.equal(called("tabs.create")[0][1].url,
-  "chrome-extension://td/launch.html?u=" + encodeURIComponent("tdownload://open?minimized=1"));
+  "chrome-extension://td/launch.html?u=" + encodeURIComponent("qtdownloader://open?minimized=1"));
 assert.equal(called("tabs.create")[0][1].openerTabId, 7);
 assert.deepEqual(added.map((a) => a.url), ["https://h.vn/b.zip"]);
 assert.equal(called("download").length, 0);
@@ -117,7 +117,7 @@ reset({ protocol: false });
 const r = await message({ type: "sendMedia", url: "https://h.vn/x.m3u8", kind: "HLS", pageUrl: "https://h.vn/", tabId: 7 });
 assert.deepEqual(r, { ok: false, status: "failed" });
 assert.equal(called("download").length, 0);
-assert.equal(called("notify")[0][1].title, "Chưa gửi được sang TDownload");
+assert.equal(called("notify")[0][1].title, "Chưa gửi được sang QT Downloader");
 passed++;
 
 // Gọi onDeterminingFilename như trình duyệt; trả về true nếu extension trả lượt tải lại cho trình duyệt (suggest)

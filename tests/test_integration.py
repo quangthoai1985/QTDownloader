@@ -1,6 +1,6 @@
-"""Giao thức tdownload://, khởi động cùng Windows và luồng extension khi app chưa chạy.
+"""Giao thức qtdownloader://, khởi động cùng Windows và luồng extension khi app chưa chạy.
 
-Registry chỉ được ghi vào khoá tạm HKCU\\Software\\TDownloadTest\\<ngẫu nhiên> rồi xoá — không đụng khoá thật.
+Registry chỉ được ghi vào khoá tạm HKCU\\Software\\QTDownloaderTest\\<ngẫu nhiên> rồi xoá — không đụng khoá thật.
 """
 
 import os
@@ -11,50 +11,52 @@ import uuid
 
 import pytest
 
-from tdownload.core import integration as I
-from tdownload.core.settings import Settings
+from qtdownloader.core import integration as I
+from qtdownloader.core.settings import Settings
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 win_only = pytest.mark.skipif(sys.platform != "win32", reason="chỉ có registry trên Windows")
 
 
 def test_parse_protocol_open():
-    assert I.parse_protocol_url("tdownload://open") == {"action": "open", "minimized": False}
-    assert I.parse_protocol_url("tdownload://open/") == {"action": "open", "minimized": False}
-    assert I.parse_protocol_url("TDownload://") == {"action": "open", "minimized": False}
-    assert I.parse_protocol_url("tdownload://open?minimized=1")["minimized"] is True
+    assert I.parse_protocol_url("qtdownloader://open") == {"action": "open", "minimized": False}
+    assert I.parse_protocol_url("qtdownloader://open/") == {"action": "open", "minimized": False}
+    assert I.parse_protocol_url("QTDownloader://") == {"action": "open", "minimized": False}
+    assert I.parse_protocol_url("qtdownloader://open?minimized=1")["minimized"] is True
     assert I.parse_protocol_url("https://example.com/a.zip") is None
-    assert I.parse_protocol_url("tdownload://xoa-het") is None
+    assert I.parse_protocol_url("qtdownloader://xoa-het") is None
 
 
 def test_parse_protocol_add():
-    p = I.parse_protocol_url("tdownload://add?url=https%3A%2F%2Fh.vn%2Ft%E1%BB%87p%20a.zip%3Fx%3D1%26y%3D2"
+    p = I.parse_protocol_url("qtdownloader://add?url=https%3A%2F%2Fh.vn%2Ft%E1%BB%87p%20a.zip%3Fx%3D1%26y%3D2"
                              "&referer=https%3A%2F%2Fh.vn%2F&filename=t%E1%BB%87p.zip")
     assert p == {"action": "add", "url": "https://h.vn/tệp a.zip?x=1&y=2", "referer": "https://h.vn/",
                  "filename": "tệp.zip", "minimized": False}
-    assert I.parse_protocol_url("tdownload:add?url=http://a/b")["url"] == "http://a/b"
-    assert I.parse_protocol_url("tdownload://add/?url=http://a/b")["url"] == "http://a/b"
+    assert I.parse_protocol_url("qtdownloader:add?url=http://a/b")["url"] == "http://a/b"
+    # link của bản TDownload cũ (extension chưa cập nhật) vẫn mở được app
+    assert I.parse_protocol_url("tdownload://add?url=http://a/b")["url"] == "http://a/b"
+    assert I.parse_protocol_url("qtdownloader://add/?url=http://a/b")["url"] == "http://a/b"
     # chỉ nhận http(s) — không mở file:, javascript:, …
-    assert I.parse_protocol_url("tdownload://add?url=file%3A%2F%2F%2FC%3A%2Fx") is None
-    assert I.parse_protocol_url("tdownload://add") is None
+    assert I.parse_protocol_url("qtdownloader://add?url=file%3A%2F%2F%2FC%3A%2Fx") is None
+    assert I.parse_protocol_url("qtdownloader://add") is None
 
 
 def test_parse_launch_args():
-    a = I.parse_launch_args(["https://a/1.zip", "tdownload://add?url=http%3A%2F%2Fb%2F2.zip&referer=http%3A%2F%2Fb%2F",
-                             "tdownload://open", "rác"])
+    a = I.parse_launch_args(["https://a/1.zip", "qtdownloader://add?url=http%3A%2F%2Fb%2F2.zip&referer=http%3A%2F%2Fb%2F",
+                             "qtdownloader://open", "rác"])
     assert a.adds == [{"url": "https://a/1.zip"},
                       {"url": "http://b/2.zip", "referer": "http://b/", "from_protocol": True}]
     assert a.minimized is False
     assert I.parse_launch_args(["--minimized"]).minimized is True
-    assert I.parse_launch_args(["tdownload://open?minimized=1"]).minimized is True
-    assert I.parse_launch_args(["tdownload://open?minimized=1"]).adds == []
+    assert I.parse_launch_args(["qtdownloader://open?minimized=1"]).minimized is True
+    assert I.parse_launch_args(["qtdownloader://open?minimized=1"]).adds == []
 
 
 def test_app_command_quotes_paths():
     cmd = I.app_command('"%1"')
     assert cmd.startswith('"') and cmd.endswith('"%1"')
     if not getattr(sys, "frozen", False):
-        assert "run_tdownload.py" in cmd          # đường dẫn tuyệt đối: trình duyệt chạy ở thư mục bất kỳ
+        assert "run_qtdownloader.py" in cmd          # đường dẫn tuyệt đối: trình duyệt chạy ở thư mục bất kỳ
         assert "pythonw" in cmd.lower() or not os.path.exists(os.path.join(os.path.dirname(sys.executable),
                                                                           "pythonw.exe"))
 
@@ -62,11 +64,11 @@ def test_app_command_quotes_paths():
 @pytest.fixture
 def regbase():
     import winreg
-    base = rf"Software\TDownloadTest\{uuid.uuid4().hex}"
+    base = rf"Software\QTDownloaderTest\{uuid.uuid4().hex}"
     yield winreg.HKEY_CURRENT_USER, base
-    I.delete_tree(winreg.HKEY_CURRENT_USER, r"Software\TDownloadTest")
+    I.delete_tree(winreg.HKEY_CURRENT_USER, r"Software\QTDownloaderTest")
     with pytest.raises(FileNotFoundError):
-        winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\TDownloadTest")
+        winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\QTDownloaderTest")
 
 
 @win_only
@@ -75,11 +77,11 @@ def test_register_protocol_on_temp_key(regbase):
     root, base = regbase
     classes = base + r"\Classes"
     assert I.protocol_command(root=root, base=classes) is None
-    I.register_protocol(command='"C:\\Đường dẫn\\TDownload.exe" "%1"', icon="", root=root, base=classes)
-    assert I.protocol_command(root=root, base=classes) == '"C:\\Đường dẫn\\TDownload.exe" "%1"'
-    with winreg.OpenKey(root, classes + r"\tdownload") as k:
+    I.register_protocol(command='"C:\\Đường dẫn\\QTDownloader.exe" "%1"', icon="", root=root, base=classes)
+    assert I.protocol_command(root=root, base=classes) == '"C:\\Đường dẫn\\QTDownloader.exe" "%1"'
+    with winreg.OpenKey(root, classes + r"\qtdownloader") as k:
         assert winreg.QueryValueEx(k, "URL Protocol")[0] == ""
-        assert winreg.QueryValueEx(k, None)[0] == "URL:TDownload"
+        assert winreg.QueryValueEx(k, None)[0] == "URL:QT Downloader"
     I.unregister_protocol(root=root, base=classes)
     assert I.protocol_command(root=root, base=classes) is None
     I.unregister_protocol(root=root, base=classes)          # gỡ lần 2 không lỗi
@@ -104,10 +106,29 @@ def test_sync_only_touches_enabled_options(regbase):
     I.sync(s, root=root, base=classes, run_key=run)         # mặc định tắt → không ghi gì
     assert I.protocol_command(root=root, base=classes) is None
     assert I.autostart_command(root=root, key=run) is None
-    I.register_protocol(command='"D:\\cu\\TDownload.exe" "%1"', root=root, base=classes)
+    I.register_protocol(command='"D:\\cu\\QTDownloader.exe" "%1"', root=root, base=classes)
     s.browser_protocol = s.autostart = True
     I.sync(s, root=root, base=classes, run_key=run)         # app đã chuyển chỗ → lệnh được ghi lại
     assert I.protocol_command(root=root, base=classes) == I.app_command('"%1"')
+    assert I.autostart_command(root=root, key=run) == I.app_command("--minimized")
+
+
+@win_only
+def test_sync_removes_legacy_tdownload_keys(regbase):
+    """Khoá do bản TDownload cũ ghi bị gỡ — không để Windows mở cả exe cũ khi đăng nhập."""
+    import winreg
+    root, base = regbase
+    classes, run = base + r"\Classes", base + r"\Run"
+    I._set(root, classes + r"\tdownload\shell\open\command", None, '"D:\\cu\\TDownload.exe" "%1"')
+    I._set(root, run, "TDownload", '"D:\\cu\\TDownload.exe" --minimized')
+    I._set(root, run, "KhacCuaNguoiDung", "x.exe")
+    s = Settings()
+    s.autostart = True
+    I.sync(s, root=root, base=classes, run_key=run)
+    with pytest.raises(FileNotFoundError):
+        winreg.OpenKey(root, classes + r"\tdownload")
+    assert I._get(root, run, "TDownload") is None
+    assert I._get(root, run, "KhacCuaNguoiDung") == "x.exe"
     assert I.autostart_command(root=root, key=run) == I.app_command("--minimized")
 
 

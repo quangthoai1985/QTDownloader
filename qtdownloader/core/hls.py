@@ -27,7 +27,7 @@ from .limiter import RateLimiter
 from .probe import DownloadError, TransientError, http_error
 from .util import filename_from_url, now, unique_path
 
-log = logging.getLogger("tdownload.hls")
+log = logging.getLogger("qtdownloader.hls")
 
 _ATTR = re.compile(r'([A-Z0-9-]+)=("[^"]*"|[^,]*)')
 
@@ -260,7 +260,7 @@ class HlsTask:
                 raise DownloadError("Biến thể đã chọn không phải playlist media")
         pl: MediaPlaylist = data
         if pl.encrypted:
-            raise DownloadError(f"Luồng được mã hoá ({pl.key_method}) — TDownload không giải mã nội dung "
+            raise DownloadError(f"Luồng được mã hoá ({pl.key_method}) — QT Downloader không giải mã nội dung "
                                 "được bảo vệ (DRM)")
         if not pl.endlist:
             raise DownloadError("Đây là luồng trực tiếp (live) — chưa hỗ trợ")

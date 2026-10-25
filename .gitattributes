@@ -3,3 +3,6 @@
 *.bat text eol=crlf
 *.png binary
 *.ico binary
+# Inno Setup: UTF-8 có BOM + CRLF (ISCC đọc tiếng Việt đúng)
+*.iss text eol=crlf
+*.isl text eol=crlf

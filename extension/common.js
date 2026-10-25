@@ -6,7 +6,7 @@ export const DEFAULTS = {
   exts: "3gp 7z aac apk avi bin bz2 deb dmg exe flac flv gz iso jar m4a m4v mkv mov mp3 mp4 mpeg mpg msi msix " +
         "ogg pdf pkg ppt pptx rar rpm tar tgz wav webm wma wmv xapk xz zip zst docx xlsx",
   excludeHosts: "",
-  launchApp: true,     // app chưa chạy mà bấm "Tải bằng TDownload" → thử mở app qua tdownload://
+  launchApp: true,     // app chưa chạy mà bấm "Tải bằng QT Downloader" → thử mở app qua qtdownloader://
 };
 
 export async function getCfg() {
@@ -21,7 +21,7 @@ export async function ping(cfg, timeout = 800) {
   try {
     const r = await fetch(apiBase(cfg) + "/api/ping", { signal: ctl.signal, cache: "no-store" });
     const info = r.ok ? await r.json() : null;
-    // nhớ app có bật "Cho phép trình duyệt mở TDownload" không — dùng khi app đã tắt
+    // nhớ app có bật "Cho phép trình duyệt mở QT Downloader" không — dùng khi app đã tắt
     if (info && typeof info.protocol === "boolean") await chrome.storage.local.set({ protocol: info.protocol });
     return info;
   } catch {
@@ -41,7 +41,7 @@ export async function waitForApp(cfg, ms) {
   return null;
 }
 
-// true/false: app lần gần nhất báo đã bật/tắt giao thức tdownload://; null: chưa biết
+// true/false: app lần gần nhất báo đã bật/tắt giao thức qtdownloader://; null: chưa biết
 export async function protocolState() {
   return (await chrome.storage.local.get({ protocol: null })).protocol;
 }
@@ -52,7 +52,7 @@ export async function post(cfg, path, body) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!r.ok) throw new Error("TDownload trả lỗi HTTP " + r.status);
+  if (!r.ok) throw new Error("QT Downloader trả lỗi HTTP " + r.status);
   return r.json();
 }
 

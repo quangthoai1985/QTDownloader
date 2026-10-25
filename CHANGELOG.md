@@ -13,6 +13,55 @@ Mỗi lần làm việc, Agent thêm mục mới **ở trên cùng** (ngày, vi�
 - CI GitHub Actions chạy test cho mọi PR; xin chứng thư ký mã cho dự án nguồn mở (SignPath Foundation / Certum).
 - Bật "Private vulnerability reporting" trên GitHub (SECURITY.md hướng người báo lỗ hổng tới đó).
 
+## [1.1.0] — 2026-10-25
+
+Đổi tên **TDownload → QT Downloader**, có bộ cài Windows và tự cập nhật như QT PDF Pro.
+
+### Thay đổi
+- **Đổi tên ứng dụng** thành **QT Downloader** ở mọi chỗ người dùng thấy (cửa sổ, khay, hộp thoại, extension).
+  Tên kỹ thuật `QTDownloader`: `QTDownloader.exe`, gói Python `qtdownloader` (`python -m qtdownloader`), thư mục dữ
+  liệu `%LOCALAPPDATA%\QTDownloader` (`qtdownloader.db`, `logs\qtdownloader.log`), biến `QTDOWNLOADER_DATA`
+  (vẫn nhận `TDOWNLOAD_DATA`), giao thức `qtdownloader://`, mục khởi động cùng Windows `QTDownloader`, thư mục tải mặc
+  định `Downloads\QTDownloader` cho người dùng mới. Repo GitHub: `quangthoai1985/QTDownloader` (`GITHUB_REPO`).
+- **Chuyển dữ liệu của bản cũ** (`core/settings.py: resolve_data_dir`): lần đầu mở, `%LOCALAPPDATA%\TDownload` được
+  đổi tên thành `%LOCALAPPDATA%\QTDownloader` (kèm `tdownload.db` + `-wal`/`-shm` → `qtdownloader.db`). Không đổi tên
+  được (bản cũ đang mở) thì dùng tạm thư mục cũ, lần mở sau thử lại; không bao giờ ghi đè thư mục mới đã có.
+- **Gỡ khoá registry của bản cũ** khi mở app (`integration.remove_legacy`): `HKCU\Software\Classes\tdownload` và mục
+  Run `TDownload` (trỏ tới exe cũ — để lại thì Windows mở cả bản cũ). Tuỳ chọn đang bật thì ghi lại dưới tên mới.
+  Link `tdownload://` vẫn được app nhận. **Extension phải cập nhật** (tải gói extension mới, "Tải lại") để dùng
+  `qtdownloader://`; extension cũ vẫn gửi link được khi app đang chạy.
+
+### Thêm
+- **Bộ cài Inno Setup 6** (`installer.iss` + `installer/Vietnamese.isl`, UTF-8 BOM + CRLF) →
+  `release\QTDownloader-<ver>-setup.exe`: cài theo người dùng **không cần UAC** vào
+  `%LOCALAPPDATA%\Programs\QT Downloader`, lối tắt Start (+ màn hình nền tuỳ chọn), trang giấy phép MIT, kèm
+  `LICENSE.txt`/`THIRD_PARTY_NOTICES.md`/`licenses\`, App Paths (Win+R `QTDownloader`), `AppMutex` để nhận ra app
+  đang mở (app tạo mutex `QTDownloader.AppMutex`), **đăng ký gỡ cài đặt với Windows** (Cài đặt › Ứng dụng). Trình
+  gỡ cài đặt xoá giao thức + mục khởi động (tên mới và cũ), hỏi có xoá dữ liệu không (gỡ im lặng thì giữ; tệp đã tải
+  không bị đụng). `AppId` = `INNO_APP_ID` trong `qtdownloader/__init__.py` — **không bao giờ đổi**.
+- `tools/package_release.py` biên dịch bộ cài bằng ISCC (`--no-installer` để bỏ qua), thêm bản sao
+  `TDownload-<ver>-win64.zip` cho bản ≤ 1.0.3 (chỉ nhận tên này), `SHA256SUMS.txt` liệt kê mọi tệp.
+- **Tự kiểm tra & cập nhật như QT PDF Pro**:
+  - hỏi GitHub **mỗi lần mở app** (~1 giây sau khi cửa sổ hiện, `Engine.startup_update` gọi từ `ui/app.py`; test/CLI
+    không gọi) và 1 lần/ngày nếu app chạy liên tục dưới khay;
+  - có bản mới → báo ngay (thông báo khay + nút trên thanh trạng thái), không bật hộp thoại;
+  - bản đã cài (`updater.is_installed()` = cạnh exe có `unins000.exe`) → **tải ngầm** bộ cài về
+    `%LOCALAPPDATA%\QTDownloader\updates\` (`updater.download_verified`: bắt buộc khớp SHA-256, sai/huỷ thì xoá),
+    không hiện trong danh sách tải; xong → nút **Khởi động lại để cập nhật lên x.y.z** (app thoát, chạy bộ cài
+    `/SILENT /LAUNCHAPP`, cài xong tự mở lại); không bấm thì **cài im lặng khi thoát app** (`/VERYSILENT`, không mở
+    lại; không cài khi lịch hẹn tắt máy);
+  - mở bản mới lần đầu → "Đã cập nhật QT Downloader từ x lên y"; bộ cài đã dùng được dọn;
+  - bản giải nén (zip) chỉ được báo, nút "Tải bản mới" tải gói zip như trước;
+  - tuỳ chọn mới **Tự tải ngầm bản mới…** (`auto_download_updates`, mặc định bật).
+- Test mới: `tests/test_installer.py` (đối chiếu `installer.iss` với mã), `tests/test_rename_migration.py`, thêm kịch
+  bản tải ngầm / sai SHA-256 / gói tên cũ trong `tests/test_updater.py`, gỡ khoá cũ trong `tests/test_integration.py`.
+
+### Việc còn dở
+- Chưa biên dịch và cài thử bộ cài trên Windows thật (phiên làm việc này chạy trên Linux, không có ISCC/PyInstaller
+  cho Windows): cần `build.bat` → `python tools/package_release.py` → cài thử vào máy ảo/thư mục tạm → gỡ.
+- Đổi tên repo trên GitHub (Settings → Repository name → `QTDownloader`); GitHub tự chuyển hướng tên cũ nên bản
+  ≤ 1.0.3 vẫn thấy bản phát hành mới.
+
 ## [1.0.3] — 2026-10-19
 
 ### Sửa lỗi

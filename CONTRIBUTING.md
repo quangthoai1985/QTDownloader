@@ -1,13 +1,13 @@
-# Đóng góp cho TDownload
+# Đóng góp cho QT Downloader
 
 Cảm ơn bạn quan tâm! Ai cũng có thể đóng góp: báo lỗi, đề xuất tính năng, sửa tài liệu, dịch, thử trên máy chủ thật
 hay gửi mã. Hãy đọc [Quy tắc ứng xử](CODE_OF_CONDUCT.md) trước khi tham gia.
 
 ## Báo lỗi và đề xuất
 
-- Mở [issue mới](../../issues/new/choose) theo mẫu. Với lỗi, ghi rõ phiên bản TDownload (Trợ giúp → Giới thiệu),
+- Mở [issue mới](../../issues/new/choose) theo mẫu. Với lỗi, ghi rõ phiên bản QT Downloader (Trợ giúp → Giới thiệu),
   phiên bản Windows, trình duyệt, các bước tái hiện.
-- Nhật ký nằm ở `%LOCALAPPDATA%\TDownload\logs\tdownload.log` — **xoá cookie, token, link riêng tư** trước khi dán.
+- Nhật ký nằm ở `%LOCALAPPDATA%\QTDownloader\logs\qtdownloader.log` — **xoá cookie, token, link riêng tư** trước khi dán.
 - Lỗ hổng bảo mật: **không** mở issue công khai, xem [SECURITY.md](SECURITY.md).
 - Việc cần người giúp nhất hiện nay: thử tải từ các máy chủ thật (Google Drive, Fshare, Mediafire, CDN…) và báo kết
   quả — xem [CLAUDE.md §7](CLAUDE.md#7-việc-cần-làm-tiếp-theo-thứ-tự-ưu-tiên).
@@ -18,20 +18,20 @@ hay gửi mã. Hãy đọc [Quy tắc ứng xử](CODE_OF_CONDUCT.md) trước k
 
 ```bash
 python -m pip install -r requirements.txt
-python -m tdownload                 # chạy giao diện
+python -m qtdownloader                 # chạy giao diện
 python -m pytest -q tests           # bộ kiểm thử (~70 giây)
 python tests/server.py --port 8765  # máy chủ thử nghiệm để bấm thử trên giao diện
-build.bat [thư_mục]                 # đóng gói TDownload.exe (PyInstaller)
+build.bat [thư_mục]                 # đóng gói QTDownloader.exe (PyInstaller)
 ```
 
-Khi thử nghiệm, đặt biến môi trường `TDOWNLOAD_DATA` trỏ tới một thư mục tạm để không đụng dữ liệu thật. Kiến trúc,
+Khi thử nghiệm, đặt biến môi trường `QTDOWNLOADER_DATA` trỏ tới một thư mục tạm để không đụng dữ liệu thật. Kiến trúc,
 quy ước và những "bẫy" đã gặp được ghi trong [CLAUDE.md](CLAUDE.md); thiết kế engine trong
 [docs/THIET_KE.md](docs/THIET_KE.md).
 
 ## Quy ước
 
 - Chuỗi giao diện và tài liệu viết **tiếng Việt có dấu**.
-- Engine (`tdownload/core/`) chạy trên một vòng lặp asyncio riêng: không chặn event loop; I/O tệp qua
+- Engine (`qtdownloader/core/`) chạy trên một vòng lặp asyncio riêng: không chặn event loop; I/O tệp qua
   `engine.io_pool`. Giao diện chỉ gọi engine qua `engine.call(...)` và đọc `engine.snapshot`.
 - Lỗi báo cho người dùng dùng `DownloadError("…tiếng Việt…")`.
 - Tệp `.bat` phải ASCII + xuống dòng CRLF.
@@ -56,5 +56,5 @@ quy ước và những "bẫy" đã gặp được ghi trong [CLAUDE.md](CLAUDE.
 
 ## Giấy phép
 
-TDownload dùng giấy phép [MIT](LICENSE). Khi gửi đóng góp, bạn đồng ý phát hành phần đóng góp đó theo cùng giấy phép
+QT Downloader dùng giấy phép [MIT](LICENSE). Khi gửi đóng góp, bạn đồng ý phát hành phần đóng góp đó theo cùng giấy phép
 MIT và xác nhận mình có quyền làm vậy.

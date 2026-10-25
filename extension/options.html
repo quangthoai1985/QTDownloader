@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
   <meta charset="utf-8">
-  <title>Tuỳ chọn TDownload</title>
+  <title>Tuỳ chọn QT Downloader</title>
   <link rel="stylesheet" href="popup.css">
   <style>
     body { width: auto; max-width: 640px; margin: 24px auto; padding: 0 16px; }
@@ -16,12 +16,12 @@
   </style>
 </head>
 <body>
-  <h1>Tuỳ chọn TDownload</h1>
-  <label for="port">Cổng của ứng dụng TDownload</label>
+  <h1>Tuỳ chọn QT Downloader</h1>
+  <label for="port">Cổng của ứng dụng QT Downloader</label>
   <input type="number" id="port" min="1024" max="65535">
   <small>Phải trùng với Tuỳ chọn → Trình duyệt trong app (mặc định 41888).</small>
 
-  <label for="exts">Đuôi tệp tự chuyển sang TDownload</label>
+  <label for="exts">Đuôi tệp tự chuyển sang QT Downloader</label>
   <textarea id="exts"></textarea>
   <small>Cách nhau bởi dấu cách. Tệp không có đuôi sẽ được nhận diện theo kiểu MIME (zip, exe, pdf, video…).</small>
 
@@ -31,9 +31,9 @@
   <label for="exclude">Không bắt link trên các trang</label>
   <textarea id="exclude" placeholder="vd: mail.google.com drive.google.com"></textarea>
 
-  <label class="check"><input type="checkbox" id="launchApp"> Tự mở TDownload khi app chưa chạy</label>
-  <small>Áp dụng cho menu chuột phải “Tải bằng TDownload” và nút trên popup. Cần bật Tuỳ chọn → Trình duyệt →
-    “Cho phép trình duyệt mở TDownload” trong app. Không mở được thì link thường được chuyển cho trình duyệt tải.</small>
+  <label class="check"><input type="checkbox" id="launchApp"> Tự mở QT Downloader khi app chưa chạy</label>
+  <small>Áp dụng cho menu chuột phải “Tải bằng QT Downloader” và nút trên popup. Cần bật Tuỳ chọn → Trình duyệt →
+    “Cho phép trình duyệt mở QT Downloader” trong app. Không mở được thì link thường được chuyển cho trình duyệt tải.</small>
 
   <div class="bar"><button class="primary" id="save">Lưu</button><span id="msg"></span></div>
   <script type="module" src="options.js"></script>

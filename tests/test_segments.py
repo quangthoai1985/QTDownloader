@@ -1,6 +1,6 @@
-from tdownload.core.segments import ALIGN, Segment, SegmentMap
-from tdownload.core.util import expand_batch_pattern, sanitize_filename
-from tdownload.core.probe import parse_content_disposition, parse_content_range
+from qtdownloader.core.segments import ALIGN, Segment, SegmentMap
+from qtdownloader.core.util import expand_batch_pattern, sanitize_filename
+from qtdownloader.core.probe import parse_content_disposition, parse_content_range
 
 MB = 1024 * 1024
 

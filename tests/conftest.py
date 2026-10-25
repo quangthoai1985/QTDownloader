@@ -9,7 +9,7 @@ sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import server as test_server  # noqa: E402
-from tdownload.core.engine import Engine  # noqa: E402
+from qtdownloader.core.engine import Engine  # noqa: E402
 
 
 @pytest.fixture(scope="session")

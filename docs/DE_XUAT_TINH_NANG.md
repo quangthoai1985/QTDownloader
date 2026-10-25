@@ -1,6 +1,6 @@
-# Đề xuất tính năng cho TDownload
+# Đề xuất tính năng cho QT Downloader
 
-Chia 2 phần: **(A)** những điểm TDownload đã làm *tốt hơn / khác* IDM trong bản này, và **(B)** đề xuất tiếp theo,
+Chia 2 phần: **(A)** những điểm QT Downloader đã làm *tốt hơn / khác* IDM trong bản này, và **(B)** đề xuất tiếp theo,
 xếp theo giá trị cho người dùng (đặc biệt người dùng Việt Nam) so với công sức.
 
 Ký hiệu công sức: 🟢 nhỏ (≤ 3 ngày) · 🟡 vừa (1–2 tuần) · 🔴 lớn (≥ 1 tháng).
@@ -11,7 +11,7 @@ Ký hiệu công sức: 🟢 nhỏ (≤ 3 ngày) · 🟡 vừa (1–2 tuần) ·
 
 | # | Tính năng | Vì sao hay | Ở đâu trong mã |
 |---|---|---|---|
-| 1 | **Tải đồng thời từ nhiều nguồn (mirror)** | Không chỉ dùng link thay thế khi link chính lỗi: TDownload chia các kết nối cho *tất cả* mirror cùng lúc → cộng dồn băng thông của nhiều máy chủ. Mirror khác kích thước bị loại để không trộn dữ liệu | `http_task._probe_mirrors`, ô "Nguồn phụ" |
+| 1 | **Tải đồng thời từ nhiều nguồn (mirror)** | Không chỉ dùng link thay thế khi link chính lỗi: QT Downloader chia các kết nối cho *tất cả* mirror cùng lúc → cộng dồn băng thông của nhiều máy chủ. Mirror khác kích thước bị loại để không trộn dữ liệu | `http_task._probe_mirrors`, ô "Nguồn phụ" |
 | 2 | **Cửa sổ yêu cầu + ngưỡng chia động** | Mỗi kết nối gửi Range theo "cửa sổ" ~4 giây tải; khi chia đoạn thì cắt sau cửa sổ đang bay → kết nối cũ đọc trọn phản hồi, giữ được keep-alive. Ngưỡng chia đoạn tự co theo tốc độ đo được → phần cuối tệp không bị dồn cho 1 kết nối chậm | `segments.split_largest`, `http_task._split_threshold` |
 | 3 | **Lịch sự với máy chủ (AIMD)** | Gặp 429/503/từ chối kết nối thì tự giảm số kết nối, nhớ giới hạn theo host, sau 30 giây yên ổn mới tăng lại — tránh bị chặn IP | `http_task._reduce_cap` |
 | 4 | **Ghi thẳng vào tệp sparse** | Không có bước "ghép các phần" khi xong (tệp nhiều GB không phải chờ), không khựng do Windows điền số 0 | `fileio.PartFile` |
@@ -22,9 +22,9 @@ Ký hiệu công sức: 🟢 nhỏ (≤ 3 ngày) · 🟡 vừa (1–2 tuần) ·
 | 9 | **Cảnh báo "trang web thay vì tệp"** | Phát hiện máy chủ trả `text/html` (trang đăng nhập/link hết hạn) trước khi tải | `AddUrlDialog._on_probe` |
 | 10 | **Kiểm tra dung lượng ổ trước khi tải** | Báo ngay nếu ổ không đủ chỗ, không tải nửa chừng | `http_task._prepare_file` |
 | 11 | **Nhập danh sách `.ef2` của IDM** | Chuyển hàng loạt link từ IDM sang trong 1 bước | `main_window.parse_ef2` |
-| 12 | **Không cần ghi registry để tích hợp trình duyệt** | Extension gọi API `127.0.0.1` có kiểm Host/Origin/CORS; IDM cần native messaging host + registry. Muốn extension mở được app khi app tắt thì người dùng tự bật giao thức `tdownload://` (HKCU, gỡ được); không mở được thì link rơi về trình duyệt, không mất | `core/api_server.py`, `core/integration.py` |
+| 12 | **Không cần ghi registry để tích hợp trình duyệt** | Extension gọi API `127.0.0.1` có kiểm Host/Origin/CORS; IDM cần native messaging host + registry. Muốn extension mở được app khi app tắt thì người dùng tự bật giao thức `qtdownloader://` (HKCU, gỡ được); không mở được thì link rơi về trình duyệt, không mất | `core/api_server.py`, `core/integration.py` |
 | 13 | **Từ chối DRM rõ ràng** | Luồng HLS có `#EXT-X-KEY` bị từ chối kèm thông báo, không âm thầm tải rác | `core/hls.py` |
-| 14 | **CLI headless** | `python -m tdownload.cli URL -c 16` — dùng trong script, máy chủ, CI | `tdownload/cli.py` |
+| 14 | **CLI headless** | `python -m qtdownloader.cli URL -c 16` — dùng trong script, máy chủ, CI | `qtdownloader/cli.py` |
 
 ---
 
@@ -77,7 +77,7 @@ Ký hiệu công sức: 🟢 nhỏ (≤ 3 ngày) · 🟡 vừa (1–2 tuần) ·
 | **Điều khiển từ điện thoại** | Thấy link trên điện thoại → gửi về máy tính tải; xem tiến độ từ xa | 🟡 | Web UI nhẹ trên LAN (đã có API) + ghép đôi bằng mã QR + token |
 | **Ô thả nổi (drop target)** | Kéo link vào ô nhỏ luôn nổi trên màn hình như IDM | 🟢 | Cửa sổ không viền, luôn trên cùng, nhận kéo-thả |
 | **Thống kê** | Tổng dung lượng, tốc độ trung bình theo host, tỉ lệ thành công | 🟢 | Truy vấn SQLite + biểu đồ |
-| **Bản portable** | Chạy từ USB, dữ liệu cạnh exe | 🟢 | Đặt `TDOWNLOAD_DATA` = thư mục cạnh exe khi có tệp `portable.txt` |
+| **Bản portable** | Chạy từ USB, dữ liệu cạnh exe | 🟢 | Đặt `QTDOWNLOADER_DATA` = thư mục cạnh exe khi có tệp `portable.txt` |
 | **Firefox** | Thêm người dùng Firefox | 🟢 | Manifest MV3 dạng `background.scripts` + `browser_specific_settings` |
 | **Menu chuột phải trong Explorer** | "Tải lại link này", "Kiểm tra checksum" | 🟡 | Shell extension / Windows 11 sparse package |
 
@@ -85,8 +85,8 @@ Ký hiệu công sức: 🟢 nhỏ (≤ 3 ngày) · 🟡 vừa (1–2 tuần) ·
 
 | Đề xuất | Lợi ích | Công sức | Gợi ý cách làm |
 |---|---|---|---|
-| **Ghép đôi extension bằng token** | Hiện mọi tiến trình *trên máy* đều gọi được API localhost; token ngăn phần mềm lạ âm thầm thêm tải | 🟢 | App sinh token, extension nhận một lần qua trang ghép đôi; API yêu cầu header `X-TDownload-Token` |
-| **Ký số Authenticode** | Không bị SmartScreen chặn bản cài | 🟡 (chi phí chứng thư) | Ký `TDownload.exe` + bộ cài Inno Setup |
+| **Ghép đôi extension bằng token** | Hiện mọi tiến trình *trên máy* đều gọi được API localhost; token ngăn phần mềm lạ âm thầm thêm tải | 🟢 | App sinh token, extension nhận một lần qua trang ghép đôi; API yêu cầu header `X-QTDownloader-Token` |
+| **Ký số Authenticode** | Không bị SmartScreen chặn bản cài | 🟡 (chi phí chứng thư) | Ký `QTDownloader.exe` + bộ cài Inno Setup |
 | **Proxy PAC, NTLM/Kerberos** | Dùng được trong mạng công ty | 🟡 | `pypac` cho PAC; SSPI qua `pyspnego` |
 | **Mã hoá cookie lưu trữ** | Cookie phiên trong DB không bị đọc lén | 🟢 | DPAPI (`CryptProtectData`) cho cột cookie |
 

@@ -1,6 +1,6 @@
 """API HTTP tối giản trên 127.0.0.1 để extension trình duyệt chuyển link sang.
 
-Native Messaging cần ghi registry + một exe host riêng. TDownload dùng HTTP localhost cho
+Native Messaging cần ghi registry + một exe host riêng. QT Downloader dùng HTTP localhost cho
 đơn giản, kèm các lớp bảo vệ:
   * chỉ nghe 127.0.0.1;
   * Host phải là 127.0.0.1/localhost:<cổng> (chống DNS rebinding);
@@ -17,7 +17,7 @@ import logging
 
 from .. import __version__
 
-log = logging.getLogger("tdownload.api")
+log = logging.getLogger("qtdownloader.api")
 
 MAX_BODY = 4 * 1024 * 1024
 EXT_ORIGINS = ("chrome-extension://", "moz-extension://", "extension://", "safari-web-extension://")
@@ -91,8 +91,8 @@ class LocalApiServer:
             return await self._send(w, 204, None, cors)
         if method == "GET" and path == "/api/ping":
             snap = self.engine.snapshot
-            # protocol: extension nhớ để biết có nên thử mở app qua tdownload:// khi app tắt hay không
-            return await self._send(w, 200, {"app": "TDownload", "version": __version__,
+            # protocol: extension nhớ để biết có nên thử mở app qua qtdownloader:// khi app tắt hay không
+            return await self._send(w, 200, {"app": "QT Downloader", "version": __version__,
                                              "active": snap.get("active", 0),
                                              "protocol": bool(self.engine.settings.browser_protocol)}, cors)
         if method != "POST":

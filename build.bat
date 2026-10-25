@@ -1,16 +1,16 @@
 @echo off
-rem Build TDownload.exe (portable folder, no Python needed)
-rem Usage: build.bat [distdir]   (default: dist)  ->  <distdir>\TDownload\TDownload.exe
-rem Version comes from tdownload\__init__.py (__version__)
+rem Build QTDownloader.exe (portable folder, no Python needed)
+rem Usage: build.bat [distdir]   (default: dist)  ->  <distdir>\QTDownloader\QTDownloader.exe
+rem Version comes from qtdownloader\__init__.py (__version__)
 setlocal
 cd /d "%~dp0"
 set "DIST=%~1"
 if "%DIST%"=="" set "DIST=dist"
 python tools\make_icons.py || goto :err
 python tools\make_version_file.py || goto :err
-python -m PyInstaller --noconfirm --clean --windowed --name TDownload ^
+python -m PyInstaller --noconfirm --clean --windowed --name QTDownloader ^
   --distpath "%DIST%" --workpath build ^
-  --icon assets\tdownload.ico ^
+  --icon assets\qtdownloader.ico ^
   --version-file assets\version_info.txt ^
   --add-data "extension;extension" ^
   --exclude-module tkinter --exclude-module pytest --exclude-module numpy --exclude-module PIL ^
@@ -19,11 +19,11 @@ python -m PyInstaller --noconfirm --clean --windowed --name TDownload ^
   --exclude-module mdurl --exclude-module colorama --exclude-module zstandard ^
   --exclude-module win32evtlogutil --exclude-module win32evtlog --exclude-module win32con ^
   --exclude-module pywintypes --exclude-module win32api ^
-  run_tdownload.py || goto :err
+  run_qtdownloader.py || goto :err
 rem Software OpenGL fallback is not used by the Qt Widgets UI
-del /q "%DIST%\TDownload\_internal\PySide6\opengl32sw.dll" 2>nul
+del /q "%DIST%\QTDownloader\_internal\PySide6\opengl32sw.dll" 2>nul
 echo.
-echo Done: %DIST%\TDownload\TDownload.exe
+echo Done: %DIST%\QTDownloader\QTDownloader.exe
 goto :eof
 :err
 echo Build failed.

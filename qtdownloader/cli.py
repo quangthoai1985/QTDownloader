@@ -1,6 +1,6 @@
-"""Dùng TDownload không cần giao diện.
+"""Dùng QT Downloader không cần giao diện.
 
-    python -m tdownload.cli URL [URL…] [-c 8] [-o THƯ_MỤC] [-l 500] [--mirror URL2]
+    python -m qtdownloader.cli URL [URL…] [-c 8] [-o THƯ_MỤC] [-l 500] [--mirror URL2]
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ def main(argv: list[str] | None = None) -> int:
             stream.reconfigure(encoding="utf-8", errors="replace")
         except (AttributeError, ValueError):
             pass
-    p = argparse.ArgumentParser(prog="tdownload", description="Trình tải đa kết nối TDownload (CLI)")
+    p = argparse.ArgumentParser(prog="qtdownloader", description="Trình tải đa kết nối QT Downloader (CLI)")
     p.add_argument("urls", nargs="+", help="địa chỉ http(s) hoặc .m3u8")
     p.add_argument("-o", "--output-dir", default="", help="thư mục lưu (mặc định theo cài đặt)")
     p.add_argument("-c", "--connections", type=int, default=0, help="số kết nối / tệp (1–32)")

@@ -1,4 +1,7 @@
-# TDownload
+# QT Downloader
+
+> Trước bản 1.1.0 dự án tên **TDownload** (repo `quangthoai1985/TDownload`). Mở bản mới lần đầu, danh sách tải
+> và thiết lập ở `%LOCALAPPDATA%\TDownload` được tự chuyển sang `%LOCALAPPDATA%\QTDownloader`.
 
 Trình quản lý & tăng tốc tải xuống cho Windows theo kiểu Internet Download Manager (chia đoạn động đa kết nối,
 tải tiếp, hàng đợi, lịch hẹn, bắt link từ trình duyệt) — mã nguồn mở, viết bằng Python + Qt.
@@ -20,7 +23,7 @@ Giấy phép [MIT](LICENSE) — ai cũng có thể dùng, sửa và [đóng góp
 | Video | Tải HLS `.m3u8` (chọn chất lượng, tải song song đoạn, ghép `.ts`/`.mp4`; có ffmpeg thì remux MP4). Từ chối luồng có DRM |
 | An toàn | Kiểm checksum (tự tìm `.sha256`), Mark-of-the-Web, cảnh báo "server trả trang web", kiểm dung lượng ổ trước khi tải |
 | Trình duyệt | Extension Chrome/Edge/Cốc Cốc: tự chuyển tải xuống, menu chuột phải, tải tất cả/đã chọn liên kết, phát hiện video trên tab |
-| Cập nhật | Tự phát hiện bản mới trên GitHub Releases (1 lần/ngày hoặc Trợ giúp → Kiểm tra bản mới), tải gói mới kèm kiểm SHA-256 |
+| Cài đặt & cập nhật | Bộ cài theo người dùng (không cần quyền quản trị), gỡ trong Cài đặt › Ứng dụng. Mỗi lần mở app tự hỏi GitHub Releases; bản đã cài tự tải ngầm bộ cài mới (kiểm SHA-256) → **Khởi động lại để cập nhật**, không bấm thì tự cài khi thoát app |
 | Giao diện | Tiếng Việt, cửa sổ tiến trình hiện từng kết nối + đồ thị tốc độ, khay hệ thống, theo dõi clipboard, kéo-thả link |
 
 ## Chạy
@@ -32,19 +35,36 @@ python -m pip install -r requirements.txt
 ```
 
 ```bash
-python -m tdownload
+python -m qtdownloader
 ```
 
 Hoặc bấm đúp `run.bat`. Đóng cửa sổ thì app thu xuống khay; muốn tắt hẳn: chuột phải icon khay → **Thoát**.
 
-Bản đóng gói không cần Python: tải `TDownload-<phiên bản>-win64.zip` ở mục **Releases** của repo, giải nén, chạy
-`TDownload\TDownload.exe` (chưa ký số nên Windows SmartScreen có thể cảnh báo → *More info → Run anyway*).
-Tự build: `build.bat` → `dist\TDownload\TDownload.exe`.
+### Cài đặt (không cần Python)
+
+Tải `QTDownloader-<phiên bản>-setup.exe` ở mục **Releases** của repo rồi chạy. Bộ cài:
+
+- cài vào `%LOCALAPPDATA%\Programs\QT Downloader`, **không cần quyền quản trị** (không hỏi UAC);
+- tạo lối tắt trong menu Start (tuỳ chọn thêm lối tắt màn hình nền);
+- đăng ký với Windows → gỡ được trong **Cài đặt › Ứng dụng › Ứng dụng đã cài** (hoặc Control Panel). Trình gỡ cài đặt
+  xoá cả khoá giao thức `qtdownloader://` và mục khởi động cùng Windows nếu bạn đã bật, rồi hỏi có xoá danh sách tải
+  và thiết lập không (tệp đã tải về không bao giờ bị xoá);
+- cài im lặng: `QTDownloader-<ver>-setup.exe /VERYSILENT /SUPPRESSMSGBOXES`.
+
+Bản cài tự cập nhật: mỗi lần mở app sẽ hỏi GitHub, có bản mới thì báo ngay và tải ngầm bộ cài, xong hiện nút
+**Khởi động lại để cập nhật** ở thanh trạng thái (không bấm thì bản mới tự cài khi bạn thoát app). Tắt trong
+**Tuỳ chọn → Chung**.
+
+Bản giải nén (portable): `QTDownloader-<phiên bản>-win64.zip`, giải nén rồi chạy `QTDownloader\QTDownloader.exe` —
+bản này chỉ được báo có bản mới. Chưa ký số nên Windows SmartScreen có thể cảnh báo → *More info → Run anyway*.
+
+Tự build: `build.bat` → `dist\QTDownloader\QTDownloader.exe`; đóng gói phát hành kèm bộ cài (cần
+[Inno Setup 6](https://jrsoftware.org/isinfo.php)): `python tools/package_release.py` → `release\`.
 
 ### Dòng lệnh (không giao diện)
 
 ```bash
-python -m tdownload.cli "https://example.com/file.iso" -c 16 -o D:\Downloads
+python -m qtdownloader.cli "https://example.com/file.iso" -c 16 -o D:\Downloads
 ```
 
 Tham số: `-c` số kết nối, `-l` giới hạn KB/s, `--mirror URL` nguồn phụ (lặp được), `--checksum sha256:…`.
@@ -53,33 +73,34 @@ Tham số: `-c` số kết nối, `-l` giới hạn KB/s, `--mirror URL` nguồn
 
 1. Mở `chrome://extensions` (Edge: `edge://extensions`, Cốc Cốc: `coccoc://extensions`).
 2. Bật **Chế độ dành cho nhà phát triển** → **Tải tiện ích đã giải nén** → chọn thư mục `extension`.
-3. Mở TDownload. Biểu tượng extension báo "đã kết nối" là xong.
+3. Mở QT Downloader. Biểu tượng extension báo "đã kết nối" là xong.
 
-Khi TDownload không chạy, trình duyệt tự tải như bình thường. Tắt tạm hoặc bỏ qua một trang ngay trong popup
+Khi QT Downloader không chạy, trình duyệt tự tải như bình thường. Tắt tạm hoặc bỏ qua một trang ngay trong popup
 của extension.
 
-Muốn extension mở được app khi app chưa chạy (menu chuột phải **Tải bằng TDownload**, nút **Mở TDownload** trên
-popup): trong app vào **Tuỳ chọn → Trình duyệt → Cho phép trình duyệt mở TDownload** (đăng ký giao thức
-`tdownload://` vào `HKCU\Software\Classes`, bỏ chọn thì gỡ). Trình duyệt sẽ hỏi "Mở TDownload?" — chọn Mở. Không
+Muốn extension mở được app khi app chưa chạy (menu chuột phải **Tải bằng QT Downloader**, nút **Mở QT Downloader** trên
+popup): trong app vào **Tuỳ chọn → Trình duyệt → Cho phép trình duyệt mở QT Downloader** (đăng ký giao thức
+`qtdownloader://` vào `HKCU\Software\Classes`, bỏ chọn thì gỡ). Trình duyệt sẽ hỏi "Mở QT Downloader?" — chọn Mở. Không
 mở được thì link được chuyển cho trình duyệt tải, kèm thông báo lý do. Hoặc bật **Tuỳ chọn → Chung → Khởi động
 cùng Windows** để app luôn chạy sẵn dưới khay. Cả hai mặc định tắt.
 
 ## Cấu trúc
 
 ```
-tdownload/core/     engine, không phụ thuộc giao diện
+qtdownloader/core/     engine, không phụ thuộc giao diện
   segments.py       thuật toán chia đoạn động
   http_task.py      tải 1 tệp: worker, cửa sổ yêu cầu, retry, checkpoint, checksum
   hls.py            tải luồng HLS
   engine.py         hàng đợi, lịch, giới hạn tốc độ, snapshot cho UI
   api_server.py     API 127.0.0.1 cho extension
   fileio.py         ghi song song vào tệp sparse, Mark-of-the-Web
-tdownload/ui/       giao diện PySide6
+qtdownloader/ui/       giao diện PySide6
 extension/          extension Manifest V3
-tests/              máy chủ thử nghiệm + 32 test (pytest)
+installer.iss       bộ cài Inno Setup (+ installer/Vietnamese.isl)
+tests/              máy chủ thử nghiệm + bộ test pytest
 ```
 
-Dữ liệu (danh sách tải, cài đặt, log) nằm ở `%LOCALAPPDATA%\TDownload`. Đặt biến `TDOWNLOAD_DATA` để dùng thư mục khác.
+Dữ liệu (danh sách tải, cài đặt, log) nằm ở `%LOCALAPPDATA%\QTDownloader`. Đặt biến `QTDOWNLOADER_DATA` để dùng thư mục khác.
 
 ## Kiểm thử
 
@@ -97,8 +118,8 @@ Xem thử máy chủ đó bằng giao diện: `python tests/server.py` rồi th�
 ## Lưu ý
 
 - Tốc độ tăng chỉ khi máy chủ hỗ trợ Range và giới hạn theo từng kết nối; server giới hạn theo IP thì đa kết nối không giúp.
-- Chỉ tải nội dung bạn có quyền tải. TDownload không vượt DRM và không dùng mã, icon hay thương hiệu của IDM.
-  "Internet Download Manager"/"IDM" là thương hiệu của chủ sở hữu tương ứng; TDownload không liên quan tới họ.
+- Chỉ tải nội dung bạn có quyền tải. QT Downloader không vượt DRM và không dùng mã, icon hay thương hiệu của IDM.
+  "Internet Download Manager"/"IDM" là thương hiệu của chủ sở hữu tương ứng; QT Downloader không liên quan tới họ.
 
 ## Đóng góp
 
@@ -108,5 +129,5 @@ mật xin báo riêng theo [SECURITY.md](SECURITY.md).
 
 ## Giấy phép
 
-TDownload phát hành theo giấy phép [MIT](LICENSE). Bản đóng gói `.exe` có kèm các thư viện bên thứ ba (Qt/PySide6
+QT Downloader phát hành theo giấy phép [MIT](LICENSE). Bản đóng gói `.exe` có kèm các thư viện bên thứ ba (Qt/PySide6
 theo LGPL-3.0, Python, httpx…) — xem [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

@@ -1,10 +1,10 @@
-"""Số phiên bản phải đồng bộ: tdownload.__version__ là nguồn duy nhất."""
+"""Số phiên bản phải đồng bộ: qtdownloader.__version__ là nguồn duy nhất."""
 
 import json
 import os
 import re
 
-from tdownload import __version__
+from qtdownloader import __version__
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 

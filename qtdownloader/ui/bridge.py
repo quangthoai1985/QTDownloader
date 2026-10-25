@@ -11,7 +11,7 @@ from PySide6.QtCore import QObject, Signal
 
 from ..core.models import DownloadItem
 
-log = logging.getLogger("tdownload.ui")
+log = logging.getLogger("qtdownloader.ui")
 
 
 class Bridge(QObject):

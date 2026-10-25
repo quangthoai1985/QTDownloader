@@ -37,7 +37,7 @@ from .probe import (
 from .segments import Segment, SegmentMap
 from .util import fmt_size, host_of, now, unique_path
 
-log = logging.getLogger("tdownload.http")
+log = logging.getLogger("qtdownloader.http")
 
 READ_CHUNK = 64 * 1024
 FLUSH_SIZE = 512 * 1024

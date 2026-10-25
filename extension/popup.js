@@ -17,16 +17,16 @@ async function main() {
   if (!info) {
     $("launch").hidden = false;
     $("launchHint").textContent = known
-      ? "Trình duyệt sẽ hỏi có mở TDownload không — chọn Mở, tích “luôn cho phép” để lần sau khỏi hỏi."
-      : "Cần bật một lần trong app: Tuỳ chọn → Trình duyệt → “Cho phép trình duyệt mở TDownload”.";
+      ? "Trình duyệt sẽ hỏi có mở QT Downloader không — chọn Mở, tích “luôn cho phép” để lần sau khỏi hỏi."
+      : "Cần bật một lần trong app: Tuỳ chọn → Trình duyệt → “Cho phép trình duyệt mở QT Downloader”.";
     $("open").onclick = async () => {
       $("open").disabled = true;
       $("open").textContent = "Đang mở…";
       const r = await chrome.runtime.sendMessage({ type: "openApp", tabId: tab.id });
       if (r && r.ok) return location.reload();
       $("open").disabled = false;
-      $("open").textContent = "Mở TDownload";
-      $("launchHint").textContent = (r && r.error) || "Không mở được TDownload.";
+      $("open").textContent = "Mở QT Downloader";
+      $("launchHint").textContent = (r && r.error) || "Không mở được QT Downloader.";
     };
   }
 
@@ -67,7 +67,7 @@ async function main() {
       btn.title = "DASH (.mpd) chưa hỗ trợ ghép";
     } else if (m.kind === "HLS" && !canLaunch) {
       btn.disabled = true;          // trình duyệt không tự tải được HLS
-      btn.title = "Hãy mở TDownload trước";
+      btn.title = "Hãy mở QT Downloader trước";
     }
     btn.onclick = async () => {
       btn.disabled = true;
@@ -86,7 +86,7 @@ async function main() {
   $("all").onclick = async () => {
     $("all").disabled = true;
     const r = await chrome.runtime.sendMessage({ type: "sendAll", tab: { id: tab.id, url: tab.url } });
-    $("all").textContent = r && r.ok ? "Đã gửi danh sách sang TDownload ✓" : "Không gửi được";
+    $("all").textContent = r && r.ok ? "Đã gửi danh sách sang QT Downloader ✓" : "Không gửi được";
   };
   $("options").onclick = (e) => { e.preventDefault(); chrome.runtime.openOptionsPage(); };
 }
